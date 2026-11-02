@@ -64,7 +64,7 @@ backend/app/            application (DDD-ish: core, models, schemas, providers, 
 backend/tests/          pytest suite (unit, service, HTTP e2e)
 config/                 app.yaml, agents/, providers/, workflows/, prompts/, schemas/, environments/
 deployment/             docker/ (image) and nginx/ (reverse proxy reference config)
-docs/                   architecture, api, database, agents, model_configs, testing, decisions (ADR)
+docs/                   manual (操作手册), architecture, api, database, agents, model_configs, testing, decisions (ADR)
 samples/                novel_sample.txt used by the console import button and tests
 scripts/                smoke_pipeline.py, export_schemas.py
 web/                    no-build console (plain HTML/CSS/JS) served by FastAPI
@@ -73,6 +73,7 @@ docker-compose.yml      single-container API stack (SQLite + local storage, task
 
 ## Documentation
 
+- [docs/manual/README.md](docs/manual/README.md) — 操作手册 (operator manual: start, run, review, switch models, troubleshoot)
 - [docs/architecture/overview.md](docs/architecture/overview.md) — layers, request/task flow, workflow engine
 - [docs/api/README.md](docs/api/README.md) — endpoint reference, auth, SSE framing, error envelope
 - [docs/database/schema.md](docs/database/schema.md) — tables grouped by bounded context
@@ -108,7 +109,8 @@ and enable that provider in `config/providers/llm.yaml`. No Python change is req
 docker compose up --build          # http://127.0.0.1:8000/
 ```
 
-`data/` is a bind mount so the SQLite database and generated media survive rebuilds.
+`data/` lives on the `studio-data` volume mounted at `/data`, so the SQLite database
+and generated media survive rebuilds (`docker compose down -v` drops them).
 
 ## Status and known gaps
 

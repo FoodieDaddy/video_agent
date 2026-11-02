@@ -111,7 +111,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/projects `
 | GET | `/projects/{id}/script` | latest script |
 | GET | `/projects/{id}/scripts` | all script versions |
 | GET | `/scripts/{script_id}` | one script |
-| PATCH | `/scripts/{script_id}` | edit title/logline/synopsis/content → new version |
+| PATCH | `/scripts/{script_id}` | edit title/logline/synopsis/content in place (status → `edited`; a new version only comes from re-running the script stage) |
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/projects/$PID/upload?sample=true"
