@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "SceneCandidate": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "chapter_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chapter Index"
+        },
+        "time_of_day": {
+          "default": "",
+          "title": "Time Of Day",
+          "type": "string"
+        },
+        "environment": {
+          "default": "",
+          "title": "Environment",
+          "type": "string"
+        },
+        "architecture": {
+          "default": "",
+          "title": "Architecture",
+          "type": "string"
+        },
+        "lighting": {
+          "default": "",
+          "title": "Lighting",
+          "type": "string"
+        },
+        "mood": {
+          "default": "",
+          "title": "Mood",
+          "type": "string"
+        },
+        "evidence": {
+          "default": "",
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SceneCandidate",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/SceneCandidate"
+      },
+      "title": "Scenes",
+      "type": "array"
+    }
+  },
+  "title": "SceneExtractionOutput",
+  "type": "object"
+}

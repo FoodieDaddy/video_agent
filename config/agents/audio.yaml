@@ -1,0 +1,39 @@
+agent:
+  id: audio
+  name: Audio Agent
+  enabled: true
+  version: 1.0.0
+  description: 规划旁白、对白配音、音乐与音效提示，输出逐句配音计划。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.3
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 4096
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: audio_plan
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/audio/system.md
+  user_template: prompts/audio/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+  thresholds: {}

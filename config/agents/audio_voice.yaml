@@ -1,0 +1,35 @@
+agent:
+  id: audio_voice
+  name: Audio Voice Agent
+  enabled: true
+  version: 1.0.0
+  description: 通过配置的语音合成模型把配音文本转换为音频资产。
+model:
+  provider: mock
+  model_id: mock-tts
+  capability: speech_synthesis
+  fallback_provider: mock
+  fallback_model_id: mock-tts
+  provider_options:
+    voice: alloy
+generation:
+  timeout_seconds: 180
+  max_retries: 1
+structured_output:
+  enabled: false
+  schema_name: null
+  validation_required: false
+  repair_attempts: 0
+prompt:
+  system: prompts/audio/voice_system.md
+  user_template: prompts/audio/voice_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 4
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - audio_present
+  thresholds: {}

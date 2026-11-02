@@ -1,0 +1,39 @@
+agent:
+  id: orchestrator
+  name: Orchestrator Agent
+  enabled: true
+  version: 1.0.0
+  description: 为项目生成编排计划（节点顺序、人工审核点），实际执行由工作流引擎负责。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.2
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 2048
+  timeout_seconds: 90
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: orchestrator_plan
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/orchestrator/system.md
+  user_template: prompts/orchestrator/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 1
+  cache_enabled: true
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+  thresholds: {}

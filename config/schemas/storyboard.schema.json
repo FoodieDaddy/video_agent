@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "CameraSpec": {
+      "properties": {
+        "shot_type": {
+          "default": "medium_shot",
+          "title": "Shot Type",
+          "type": "string"
+        },
+        "movement": {
+          "default": "static",
+          "title": "Movement",
+          "type": "string"
+        },
+        "angle": {
+          "default": "eye_level",
+          "title": "Angle",
+          "type": "string"
+        },
+        "lens": {
+          "default": "",
+          "title": "Lens",
+          "type": "string"
+        }
+      },
+      "title": "CameraSpec",
+      "type": "object"
+    },
+    "ShotCharacterRef": {
+      "properties": {
+        "character_id": {
+          "default": "",
+          "title": "Character Id",
+          "type": "string"
+        },
+        "character_name": {
+          "default": "",
+          "title": "Character Name",
+          "type": "string"
+        },
+        "costume_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Costume Id"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Id"
+        },
+        "action": {
+          "default": "",
+          "title": "Action",
+          "type": "string"
+        },
+        "emotion": {
+          "default": "",
+          "title": "Emotion",
+          "type": "string"
+        }
+      },
+      "title": "ShotCharacterRef",
+      "type": "object"
+    },
+    "ShotDialogue": {
+      "properties": {
+        "character_id": {
+          "default": "",
+          "title": "Character Id",
+          "type": "string"
+        },
+        "character_name": {
+          "default": "",
+          "title": "Character Name",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "emotion": {
+          "default": "",
+          "title": "Emotion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ShotDialogue",
+      "type": "object"
+    },
+    "ShotDraft": {
+      "properties": {
+        "temp_id": {
+          "default": "",
+          "title": "Temp Id",
+          "type": "string"
+        },
+        "scene_name": {
+          "default": "",
+          "title": "Scene Name",
+          "type": "string"
+        },
+        "order": {
+          "default": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "characters": {
+          "items": {
+            "$ref": "#/$defs/ShotCharacterRef"
+          },
+          "title": "Characters",
+          "type": "array"
+        },
+        "camera": {
+          "$ref": "#/$defs/CameraSpec"
+        },
+        "duration_seconds": {
+          "default": 5.0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "dialogue": {
+          "items": {
+            "$ref": "#/$defs/ShotDialogue"
+          },
+          "title": "Dialogue",
+          "type": "array"
+        },
+        "action": {
+          "default": "",
+          "title": "Action",
+          "type": "string"
+        },
+        "visual_prompt": {
+          "default": "",
+          "title": "Visual Prompt",
+          "type": "string"
+        },
+        "negative_prompt": {
+          "default": "",
+          "title": "Negative Prompt",
+          "type": "string"
+        },
+        "reference_asset_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reference Asset Ids",
+          "type": "array"
+        }
+      },
+      "title": "ShotDraft",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "shots": {
+      "items": {
+        "$ref": "#/$defs/ShotDraft"
+      },
+      "title": "Shots",
+      "type": "array"
+    },
+    "notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+    }
+  },
+  "title": "StoryboardOutput",
+  "type": "object"
+}

@@ -1,0 +1,38 @@
+agent:
+  id: prompt
+  name: Prompt Agent
+  enabled: true
+  version: 1.0.0
+  description: 把结构化镜头转换为视频模型提示词包（正向、负向、风格、机位、人物 token）。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.4
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 2048
+  timeout_seconds: 90
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: prompt_pack
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/prompt/system.md
+  user_template: prompts/prompt/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 4
+  cache_enabled: true
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+  thresholds: {}

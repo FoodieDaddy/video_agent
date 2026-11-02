@@ -1,0 +1,37 @@
+agent:
+  id: character_consistency
+  name: Character Consistency Agent
+  enabled: true
+  version: 1.0.0
+  description: 对比角色参考图与新生成形象，评估外观一致性并给出重生成建议。
+model:
+  provider: mock
+  model_id: mock-vision
+  capability: vision
+  fallback_provider: mock
+  fallback_model_id: mock-vision
+  provider_options: {}
+generation:
+  temperature: 0.1
+  max_output_tokens: 2048
+  timeout_seconds: 120
+  max_retries: 1
+structured_output:
+  enabled: true
+  schema_name: character_consistency
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/character/consistency_system.md
+  user_template: prompts/character/consistency_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 4
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+  thresholds:
+    overall_score: 0.75

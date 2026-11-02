@@ -1,0 +1,49 @@
+# Video providers.
+#
+# The `http_task` protocol is a documented submit -> poll -> download contract
+# (see backend/app/providers/openai_compat.py::HttpTaskVideoProvider), so a new
+# vendor only needs a thin adapter, not a new agent.
+providers:
+  mock:
+    enabled: true
+    kind: mock
+    timeout_seconds: 300
+    max_concurrency: 2
+    models:
+      - mock-video
+
+  local_worker:
+    enabled: false
+    kind: local_worker
+    base_url_env: LOCAL_VIDEO_BASE_URL
+    endpoint_env: LOCAL_VIDEO_ENDPOINT
+    models:
+      - wan2.1-t2v
+    timeout_seconds: 1800
+    max_concurrency: 1
+    extra:
+      protocol: local_worker
+      submit_path: /jobs
+      status_path: /jobs
+      cancel_path: /jobs
+      poll_interval_seconds: 10
+      max_wait_seconds: 1800
+      unit_cost: 0.0
+
+  hosted:
+    enabled: false
+    kind: http_task
+    api_key_env: VIDEO_API_KEY
+    base_url_env: VIDEO_BASE_URL
+    models:
+      - vendor-video-v1
+    timeout_seconds: 900
+    max_concurrency: 2
+    extra:
+      protocol: http_task
+      submit_path: /videos
+      status_path: /videos
+      cancel_path: /videos
+      poll_interval_seconds: 5
+      max_wait_seconds: 900
+      unit_cost: 0.05

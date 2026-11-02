@@ -1,0 +1,99 @@
+{
+  "description": "Canonical character profile. Facts and inferences stay separated.",
+  "properties": {
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
+    "gender": {
+      "default": "unknown",
+      "title": "Gender",
+      "type": "string"
+    },
+    "age_range": {
+      "default": "",
+      "title": "Age Range",
+      "type": "string"
+    },
+    "role_type": {
+      "default": "supporting",
+      "title": "Role Type",
+      "type": "string"
+    },
+    "appearance": {
+      "default": "",
+      "title": "Appearance",
+      "type": "string"
+    },
+    "hairstyle": {
+      "default": "",
+      "title": "Hairstyle",
+      "type": "string"
+    },
+    "body": {
+      "default": "",
+      "title": "Body",
+      "type": "string"
+    },
+    "clothing_default": {
+      "default": "",
+      "title": "Clothing Default",
+      "type": "string"
+    },
+    "personality": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Personality",
+      "type": "array"
+    },
+    "background": {
+      "default": "",
+      "title": "Background",
+      "type": "string"
+    },
+    "motivation": {
+      "default": "",
+      "title": "Motivation",
+      "type": "string"
+    },
+    "speech_style": {
+      "default": "",
+      "title": "Speech Style",
+      "type": "string"
+    },
+    "visual_keywords": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Visual Keywords",
+      "type": "array"
+    },
+    "source_facts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Facts",
+      "type": "array"
+    },
+    "inferred_items": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Inferred Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "CharacterProfileOutput",
+  "type": "object"
+}

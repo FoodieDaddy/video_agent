@@ -1,0 +1,47 @@
+# LLM providers. `api_key_env` holds the NAME of the environment variable,
+# never the secret itself. Agent YAML files reference a provider + model id.
+providers:
+  mock:
+    enabled: true
+    kind: mock
+    timeout_seconds: 120
+    max_concurrency: 8
+    models:
+      - mock-llm
+
+  openai:
+    enabled: false
+    kind: openai_chat
+    api_key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
+    base_url: https://api.openai.com/v1
+    models:
+      - gpt-4.1
+      - gpt-4.1-mini
+      - gpt-4o-mini
+    timeout_seconds: 180
+    max_concurrency: 4
+    extra:
+      protocol: openai_chat
+      input_cost_per_1k: 0.0004
+      output_cost_per_1k: 0.0016
+      supported_params:
+        - temperature
+        - top_p
+        - max_output_tokens
+
+  # Any OpenAI-compatible gateway (vLLM, Azure proxy, DashScope compatible mode).
+  # Point OPENAI_COMPAT_BASE_URL at it and set OPENAI_COMPAT_API_KEY.
+  openai_compatible:
+    enabled: false
+    kind: openai_chat
+    api_key_env: OPENAI_COMPAT_API_KEY
+    base_url_env: OPENAI_COMPAT_BASE_URL
+    models:
+      - qwen-plus
+      - deepseek-chat
+    timeout_seconds: 180
+    max_concurrency: 4
+    extra:
+      protocol: openai_chat
+      max_tokens_field: max_tokens

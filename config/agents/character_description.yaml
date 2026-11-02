@@ -1,0 +1,39 @@
+agent:
+  id: character_description
+  name: Character Description Agent
+  enabled: true
+  version: 1.0.0
+  description: 基于原文证据生成可复用的人物档案，并将事实与推断分离。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.4
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 4096
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: character_profile
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/character/description_system.md
+  user_template: prompts/character/description_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 4
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - facts_separated
+  thresholds: {}

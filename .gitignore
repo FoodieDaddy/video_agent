@@ -1,0 +1,36 @@
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ---- runtime data (sqlite db, uploads, generated media) ----
+data/
+!data/.gitkeep
+*.db
+*.sqlite3
+*.log
+
+# ---- secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- editors / os ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- ad-hoc debugging artifacts (screenshots dropped in the repo root) ----
+/*.png

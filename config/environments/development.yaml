@@ -1,0 +1,14 @@
+# Development environment overrides.
+# Mock providers keep the whole pipeline runnable without any API key.
+auth:
+  allow_dev_auth: true
+
+tasks:
+  inline: true
+  max_workers: 4
+
+storage:
+  backend: local
+
+logging:
+  level: DEBUG

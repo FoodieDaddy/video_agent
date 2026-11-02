@@ -1,0 +1,39 @@
+agent:
+  id: scene_extraction
+  name: Scene Extraction Agent
+  enabled: true
+  version: 1.0.0
+  description: 从剧本与章节文本中提取场景，记录时间、环境、建筑与氛围证据。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.2
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 4096
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: scene_extraction
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/scene/extraction_system.md
+  user_template: prompts/scene/extraction_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+  thresholds: {}

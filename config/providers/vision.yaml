@@ -1,0 +1,38 @@
+# Vision providers (image understanding: reference image analysis, consistency checks).
+providers:
+  mock:
+    enabled: true
+    kind: mock
+    timeout_seconds: 120
+    max_concurrency: 4
+    models:
+      - mock-vision
+
+  openai:
+    enabled: false
+    kind: openai_chat
+    api_key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
+    base_url: https://api.openai.com/v1
+    models:
+      - gpt-4.1-mini
+      - gpt-4o
+    timeout_seconds: 120
+    max_concurrency: 2
+    extra:
+      protocol: openai_chat
+      input_cost_per_1k: 0.0004
+      output_cost_per_1k: 0.0016
+
+  # Example: a self-hosted vision model exposed through an OpenAI-compatible API.
+  local_vision:
+    enabled: false
+    kind: openai_chat
+    api_key_env: LOCAL_VISION_API_KEY
+    base_url_env: LOCAL_VISION_BASE_URL
+    models:
+      - qwen-vl-max
+    timeout_seconds: 120
+    max_concurrency: 1
+    extra:
+      protocol: openai_chat

@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "CharacterCandidate": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "role_hint": {
+          "default": "supporting",
+          "title": "Role Hint",
+          "type": "string"
+        },
+        "gender_hint": {
+          "default": "",
+          "title": "Gender Hint",
+          "type": "string"
+        },
+        "age_hint": {
+          "default": "",
+          "title": "Age Hint",
+          "type": "string"
+        },
+        "evidence": {
+          "default": "",
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "CharacterCandidate",
+      "type": "object"
+    },
+    "RelationshipDraft": {
+      "properties": {
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "relation": {
+          "title": "Relation",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "relation"
+      ],
+      "title": "RelationshipDraft",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "characters": {
+      "items": {
+        "$ref": "#/$defs/CharacterCandidate"
+      },
+      "title": "Characters",
+      "type": "array"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/RelationshipDraft"
+      },
+      "title": "Relationships",
+      "type": "array"
+    }
+  },
+  "title": "CharacterExtractionOutput",
+  "type": "object"
+}

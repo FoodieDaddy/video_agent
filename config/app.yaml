@@ -1,0 +1,55 @@
+# Global application configuration.
+# Layering: this file < config/environments/<APP_ENV>.yaml < environment variables.
+# Secrets never live here: provider YAML files only reference env var names.
+app:
+  name: AI Film Studio
+  version: 1.0.0
+  api_prefix: /api/v1
+  language: zh-CN
+
+server:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins:
+    - "http://localhost:3000"
+
+auth:
+  # Development header auth (X-User-Id / X-User-Role). Disable in production.
+  allow_dev_auth: true
+  demo_user_id: user_demo
+
+tasks:
+  # inline: run tasks in-process (single node, dev/test).
+  # When false a worker process must poll tasks (see docs/architecture.md).
+  inline: true
+  max_workers: 4
+
+storage:
+  backend: local          # local | s3
+  root: data/storage
+  bucket: ai-film-studio
+  presign_seconds: 3600
+
+media:
+  ffmpeg: ffmpeg
+  ffprobe: ffprobe
+  width: 1280
+  height: 720
+  fps: 25
+
+workflows:
+  default: novel_to_video
+
+budget:
+  default_budget_usd: 5.0
+  warn_ratio: 0.8
+  max_shots_per_project: 60
+
+limits:
+  max_upload_mb: 50
+  max_chapters: 200
+  max_title_length: 120
+
+logging:
+  level: INFO
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"

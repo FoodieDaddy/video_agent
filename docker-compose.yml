@@ -1,0 +1,55 @@
+# AI Film Studio — single-container stack.
+#
+#   docker compose up --build          # http://127.0.0.1:8000/
+#   docker compose logs -f api
+#   docker compose down                # keep the volume
+#   docker compose down -v             # drop database + generated media
+#
+# Scope: one API process with in-process tasks and SQLite, which is exactly what
+# the app supports today (see docs/decisions/0006). For a real deployment use
+# PostgreSQL, S3/MinIO storage, an external worker and a gateway that terminates
+# authentication — see docs/architecture/overview.md §8.
+
+name: ai-film-studio
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile
+      args:
+        INSTALL_EXTRAS: ""          # e.g. "s3" to install boto3
+    image: ai-film-studio:local
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      # development keeps header auth on so the console is usable out of the box.
+      # Set APP_ENV=production only behind an authenticating gateway.
+      APP_ENV: "${APP_ENV:-development}"
+      APP_INLINE_TASKS: "1"
+      APP_MAX_WORKERS: "${APP_MAX_WORKERS:-4}"
+      DATABASE_URL: "sqlite:////data/studio.db"
+      STORAGE_BACKEND: "${STORAGE_BACKEND:-local}"
+      STORAGE_ROOT: "/data/storage"
+      FFMPEG_BIN: "/usr/bin/ffmpeg"
+      FFPROBE_BIN: "/usr/bin/ffprobe"
+      # model credentials: export them in your shell, never bake them into the image
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+      OPENAI_COMPAT_API_KEY: "${OPENAI_COMPAT_API_KEY:-}"
+      OPENAI_COMPAT_BASE_URL: "${OPENAI_COMPAT_BASE_URL:-}"
+      VIDEO_API_KEY: "${VIDEO_API_KEY:-}"
+      VIDEO_BASE_URL: "${VIDEO_BASE_URL:-}"
+    volumes:
+      # database, uploads and generated media survive rebuilds
+      - studio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+volumes:
+  studio-data:

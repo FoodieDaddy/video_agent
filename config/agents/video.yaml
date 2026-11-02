@@ -1,0 +1,36 @@
+agent:
+  id: video
+  name: Video Agent
+  enabled: true
+  version: 1.0.0
+  description: 调用视频生成模型为单个镜头生成视频候选，支持同步与提交-轮询两种协议。
+model:
+  provider: mock
+  model_id: mock-video
+  capability: video_generation
+  fallback_provider: mock
+  fallback_model_id: mock-video
+  provider_options:
+    aspect_ratio: "16:9"
+generation:
+  timeout_seconds: 900
+  max_retries: 1
+structured_output:
+  enabled: false
+  schema_name: null
+  validation_required: false
+  repair_attempts: 0
+prompt:
+  system: prompts/video/system.md
+  user_template: prompts/video/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: true
+evaluation:
+  enabled: true
+  checks:
+    - duration_matches_request
+    - asset_present
+  thresholds: {}

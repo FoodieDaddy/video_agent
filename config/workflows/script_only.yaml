@@ -1,0 +1,21 @@
+# A second workflow proves workflows are configuration, not code:
+# it stops after the script stage and only asks for one human review.
+id: script_only
+name: 仅剧本解析
+version: 1.0.0
+description: 只做小说解析与剧本结构化，用于快速预览或剧本工作台。
+nodes:
+  - id: analyze_script
+    type: handler
+    handler: script
+    agent: script
+    title: 剧本解析
+  - id: extract_characters
+    type: handler
+    handler: characters
+    agent: character_extraction
+    title: 人物提取
+  - id: review_characters_scenes
+    type: gate
+    review_stage: characters_scenes
+    title: 人物审核

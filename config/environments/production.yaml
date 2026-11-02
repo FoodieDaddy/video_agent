@@ -1,0 +1,16 @@
+# Production environment overrides.
+# Credentials must come from the secret manager / environment, never from YAML.
+auth:
+  # Real auth is enforced by the gateway; header auth is only a fallback.
+  allow_dev_auth: false
+
+tasks:
+  # Long tasks run in a separate worker process.
+  inline: false
+  max_workers: 8
+
+storage:
+  backend: s3
+
+logging:
+  level: INFO

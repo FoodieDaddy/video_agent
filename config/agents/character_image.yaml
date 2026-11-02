@@ -1,0 +1,36 @@
+agent:
+  id: character_image
+  name: Character Image Agent
+  enabled: true
+  version: 1.0.0
+  description: 角色 Prompt 引擎：把已批准的档案与视图要求渲染为图像提示词并调用图像模型。
+model:
+  provider: mock
+  model_id: mock-image
+  capability: image_generation
+  fallback_provider: mock
+  fallback_model_id: mock-image
+  provider_options:
+    size: 1024x1024
+generation:
+  timeout_seconds: 300
+  max_retries: 2
+structured_output:
+  enabled: false
+  schema_name: null
+  validation_required: false
+  repair_attempts: 0
+prompt:
+  system: prompts/character/image_prompt.md
+  user_template: prompts/character/image_negative.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: true
+evaluation:
+  enabled: true
+  checks:
+    - prompt_fields_present
+    - consistency_with_profile
+  thresholds: {}

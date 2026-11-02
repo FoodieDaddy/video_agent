@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "ChapterSummary": {
+      "properties": {
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "title",
+        "summary"
+      ],
+      "title": "ChapterSummary",
+      "type": "object"
+    },
+    "DialogueLine": {
+      "properties": {
+        "character_name": {
+          "title": "Character Name",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "emotion": {
+          "default": "",
+          "title": "Emotion",
+          "type": "string"
+        },
+        "chapter_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chapter Index"
+        }
+      },
+      "required": [
+        "character_name",
+        "text"
+      ],
+      "title": "DialogueLine",
+      "type": "object"
+    },
+    "StoryEventDraft": {
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "chapter_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chapter Index"
+        },
+        "characters": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Characters",
+          "type": "array"
+        },
+        "location": {
+          "default": "",
+          "title": "Location",
+          "type": "string"
+        },
+        "importance": {
+          "default": 0.5,
+          "title": "Importance",
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ],
+      "title": "StoryEventDraft",
+      "type": "object"
+    }
+  },
+  "description": "Structured script handed to downstream agents.",
+  "properties": {
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "logline": {
+      "default": "",
+      "title": "Logline",
+      "type": "string"
+    },
+    "synopsis": {
+      "default": "",
+      "title": "Synopsis",
+      "type": "string"
+    },
+    "genre": {
+      "default": "",
+      "title": "Genre",
+      "type": "string"
+    },
+    "tone": {
+      "default": "",
+      "title": "Tone",
+      "type": "string"
+    },
+    "chapters": {
+      "items": {
+        "$ref": "#/$defs/ChapterSummary"
+      },
+      "title": "Chapters",
+      "type": "array"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/StoryEventDraft"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "dialogues": {
+      "items": {
+        "$ref": "#/$defs/DialogueLine"
+      },
+      "title": "Dialogues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "ScriptOutput",
+  "type": "object"
+}

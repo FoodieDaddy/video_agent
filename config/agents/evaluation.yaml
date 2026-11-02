@@ -1,0 +1,43 @@
+agent:
+  id: evaluation
+  name: Evaluation Agent
+  enabled: true
+  version: 1.0.0
+  description: 按阶段评估成片质量（故事、人物、场景一致性、动作、画面、音频），给出接受/重生成建议。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.2
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 2048
+  timeout_seconds: 90
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: evaluation
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/evaluation/system.md
+  user_template: prompts/evaluation/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: true
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - thresholds
+  thresholds:
+    story_consistency: 0.75
+    character_consistency: 0.75
+    visual_quality: 0.7
+    audio_quality: 0.65

@@ -1,0 +1,40 @@
+agent:
+  id: storyboard
+  name: Storyboard Agent
+  enabled: true
+  version: 1.0.0
+  description: 把导演规划拆解为结构化分镜（镜头号、景别、运镜、台词、时长、参考资产）。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.4
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 8192
+  timeout_seconds: 180
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: storyboard
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/storyboard/system.md
+  user_template: prompts/storyboard/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 1
+  cache_enabled: false
+  human_review_required: true
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+    - shot_count_matches_plan
+  thresholds: {}

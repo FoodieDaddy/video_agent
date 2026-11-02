@@ -1,0 +1,41 @@
+agent:
+  id: script
+  name: Script Agent
+  enabled: true
+  version: 1.0.0
+  description: 将小说章节解析为结构化剧本：章节摘要、故事事件、人物台词、主旨与基调。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.3
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 8192
+  timeout_seconds: 180
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: script
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/script/system.md
+  user_template: prompts/script/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+    - fact_traceability
+  thresholds:
+    completeness: 0.6

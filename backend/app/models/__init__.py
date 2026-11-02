@@ -1,0 +1,88 @@
+"""Import every ORM model so ``Base.metadata`` is complete."""
+
+from app.models.base import Base
+from app.models.character import (
+    Character,
+    CharacterAsset,
+    CharacterCostume,
+    CharacterProfile,
+    CharacterRelationship,
+    CharacterState,
+    CharacterVoice,
+)
+from app.models.ops import (
+    AgentRun,
+    AssetVersion,
+    ModelCallLog,
+    Review,
+    ReviewComment,
+    Task,
+    TaskEvent,
+    WorkflowCheckpoint,
+    WorkflowRun,
+)
+from app.models.production import (
+    AudioTrack,
+    DirectingPlan,
+    EditingProject,
+    EvaluationResult,
+    EvaluationRun,
+    Shot,
+    ShotCharacter,
+    Storyboard,
+    VideoGeneration,
+)
+from app.models.project import (
+    Asset,
+    BudgetEvent,
+    ConfigVersion,
+    Project,
+    ProjectMember,
+    PromptVersion,
+    User,
+)
+from app.models.scene import Scene, SceneAsset, SceneProfile
+from app.models.story import Script, SourceDocument, StoryChapter, StoryEvent
+
+__all__ = [
+    "AgentRun",
+    "Asset",
+    "AssetVersion",
+    "AudioTrack",
+    "Base",
+    "BudgetEvent",
+    "Character",
+    "CharacterAsset",
+    "CharacterCostume",
+    "CharacterProfile",
+    "CharacterRelationship",
+    "CharacterState",
+    "CharacterVoice",
+    "ConfigVersion",
+    "DirectingPlan",
+    "EditingProject",
+    "EvaluationResult",
+    "EvaluationRun",
+    "ModelCallLog",
+    "Project",
+    "ProjectMember",
+    "PromptVersion",
+    "Review",
+    "ReviewComment",
+    "Scene",
+    "SceneAsset",
+    "SceneProfile",
+    "Script",
+    "Shot",
+    "ShotCharacter",
+    "SourceDocument",
+    "Storyboard",
+    "StoryChapter",
+    "StoryEvent",
+    "Task",
+    "TaskEvent",
+    "User",
+    "VideoGeneration",
+    "WorkflowCheckpoint",
+    "WorkflowRun",
+]

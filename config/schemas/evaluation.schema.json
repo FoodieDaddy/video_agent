@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "EvaluationIssue": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "severity": {
+          "default": "medium",
+          "title": "Severity",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "EvaluationIssue",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "shot_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Shot Id"
+    },
+    "overall_score": {
+      "default": 0.0,
+      "title": "Overall Score",
+      "type": "number"
+    },
+    "scores": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Scores",
+      "type": "object"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/EvaluationIssue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "recommendation": {
+      "default": "review",
+      "title": "Recommendation",
+      "type": "string"
+    },
+    "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "title": "EvaluationReport",
+  "type": "object"
+}

@@ -1,0 +1,39 @@
+agent:
+  id: scene_description
+  name: Scene Description Agent
+  enabled: true
+  version: 1.0.0
+  description: 为单个场景生成可复用的视觉档案（光线、色调、道具、画面提示词）。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.4
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 3072
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: scene_profile
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/scene/description_system.md
+  user_template: prompts/scene/description_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 4
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+  thresholds: {}

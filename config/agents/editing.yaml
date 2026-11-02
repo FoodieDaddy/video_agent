@@ -1,0 +1,39 @@
+agent:
+  id: editing
+  name: Editing Agent
+  enabled: true
+  version: 1.0.0
+  description: 把镜头、视频与音频资产编排为时间线，供 FFmpeg 渲染器合成成片。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.2
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 4096
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: editing_plan
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/editing/system.md
+  user_template: prompts/editing/user.md
+  version: 1.0.0
+runtime:
+  concurrency: 1
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - timeline_consistency
+  thresholds: {}

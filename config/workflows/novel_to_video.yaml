@@ -1,0 +1,86 @@
+# End-to-end workflow: novel -> script -> characters/scenes -> review -> director
+# -> storyboard -> review -> shots -> review -> audio -> editing -> evaluation -> final review -> export.
+#
+# Node types:
+#   handler  - executes a service handler (see backend/app/services/workflow_handlers.py)
+#   gate     - blocks until a human review for `review_stage` is approved
+id: novel_to_video
+name: 小说转短视频
+version: 1.0.0
+description: 从上传小说到导出成片的完整生产流程，包含 4 个人工审核关卡。
+nodes:
+  - id: analyze_script
+    type: handler
+    handler: script
+    agent: script
+    title: 剧本解析
+  - id: extract_characters
+    type: handler
+    handler: characters
+    agent: character_extraction
+    title: 人物提取与档案
+  - id: extract_scenes
+    type: handler
+    handler: scenes
+    agent: scene_extraction
+    title: 场景提取与描述
+  - id: review_characters_scenes
+    type: gate
+    review_stage: characters_scenes
+    title: 人物与场景审核
+  - id: direct
+    type: handler
+    handler: directing
+    agent: director
+    title: 导演规划
+  - id: storyboard
+    type: handler
+    handler: storyboard
+    agent: storyboard
+    title: 分镜拆解
+  - id: review_storyboard
+    type: gate
+    review_stage: storyboard
+    title: 分镜审核
+  - id: generate_character_assets
+    type: handler
+    handler: character_assets
+    agent: character_image
+    title: 角色形象资产生成
+    continue_on_error: true
+  - id: generate_shots
+    type: handler
+    handler: video
+    agent: video
+    title: 镜头视频生成
+  - id: review_shots
+    type: gate
+    review_stage: shots
+    title: 镜头视频审核
+  - id: generate_audio
+    type: handler
+    handler: audio
+    agent: audio
+    title: 配音与字幕
+  - id: edit
+    type: handler
+    handler: editing
+    agent: editing
+    title: 时间线编排
+  - id: render
+    type: handler
+    handler: render
+    title: FFmpeg 合成
+  - id: evaluate
+    type: handler
+    handler: evaluation
+    agent: evaluation
+    title: 质量评估
+  - id: review_final
+    type: gate
+    review_stage: final
+    title: 终审
+  - id: export
+    type: handler
+    handler: export
+    title: 导出成片

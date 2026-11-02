@@ -1,0 +1,13 @@
+# Test environment: tasks always run inline so tests are deterministic.
+auth:
+  allow_dev_auth: true
+
+tasks:
+  inline: true
+  max_workers: 1
+
+storage:
+  backend: local
+
+logging:
+  level: WARNING

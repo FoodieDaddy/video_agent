@@ -1,0 +1,39 @@
+agent:
+  id: character_extraction
+  name: Character Extraction Agent
+  enabled: true
+  version: 1.0.0
+  description: 从剧本与原文中识别人物及其关系，输出带证据的人物候选列表。
+model:
+  provider: mock
+  model_id: mock-llm
+  capability: text_reasoning
+  fallback_provider: mock
+  fallback_model_id: mock-llm
+  provider_options: {}
+generation:
+  temperature: 0.2
+  top_p: 0.9
+  seed: 42
+  max_output_tokens: 4096
+  timeout_seconds: 120
+  max_retries: 2
+structured_output:
+  enabled: true
+  schema_name: character_extraction
+  validation_required: true
+  repair_attempts: 1
+prompt:
+  system: prompts/character/extraction_system.md
+  user_template: prompts/character/extraction_user.md
+  version: 1.0.0
+runtime:
+  concurrency: 2
+  cache_enabled: false
+  human_review_required: false
+evaluation:
+  enabled: true
+  checks:
+    - schema_valid
+    - completeness
+  thresholds: {}
