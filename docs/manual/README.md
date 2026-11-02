@@ -29,7 +29,7 @@
 
 | 依赖 | 版本 / 说明 | 是否必需 |
 | --- | --- | --- |
-| Python | 3.11+（推荐 3.12） | 必需 |
+| Python | 3.11+（推荐 3.12）；用 `install.exe` 安装时**无需自备** | 必需 |
 | FFmpeg / ffprobe | 合成、时长探测、字幕烧录 | 必需（缺失时只能生成时间线） |
 | Docker | 使用容器方式启动时 | 可选 |
 | 模型 API Key | 只有切换到真实 provider 时才需要 | 可选 |
@@ -45,7 +45,55 @@ ffprobe -version
 若装在非 PATH 目录，用 `FFMPEG_BIN` / `FFPROBE_BIN` 指定绝对路径即可；
 程序也会尝试 `C:/ffmpeg/bin`、`D:/ffmpeg/bin`、`~/ffmpeg/bin`、`/usr/local/bin`、`/opt/homebrew/bin`。
 
-### 2.2 首次安装（源码方式）
+### 2.2 Windows 一键安装（install.exe）
+
+不想碰命令行时，用发行包里的两个 exe：
+
+| 文件 | 作用 |
+| --- | --- |
+| `install.exe` | 一键部署：本机没有 Python 3.11+ 时自动下载并安装一份私有副本，自动 `pip` 安装依赖，写启动脚本、桌面/开始菜单快捷方式，并在注册表登记卸载项 |
+| `uninstall.exe` | 卸载：停掉正在运行的服务，删除快捷方式、注册表项、虚拟环境与应用文件；默认**保留**用户数据，加 `--purge` 才连数据一起删 |
+
+操作步骤：
+
+1. 把 `install.exe` 与 `uninstall.exe` 放在同一个文件夹（`install.exe` 会把同目录的卸载程序复制进安装目录）。
+2. 双击 `install.exe`，等它跑完（首次约 2～5 分钟，取决于网速），成功后浏览器会自动打开控制台。
+3. 之后从桌面快捷方式 **AI Film Studio** 启动；关闭控制台窗口或按 `Ctrl+C` 即停止。
+4. 卸载：`开始菜单 → AI Film Studio → Uninstall AI Film Studio`，或 `设置 → 应用 → AI Film Studio`，
+   或直接双击安装目录里的 `uninstall.exe`（需要输入 `YES` 确认）。
+
+默认安装到 `%LOCALAPPDATA%\AIFilmStudio`：
+
+```
+%LOCALAPPDATA%\AIFilmStudio\
+  app\               应用（backend + web + config）
+  venv\              独立虚拟环境，依赖都装在这里
+  python\            仅当本机没有 3.11+ 时才会出现的私有 Python 副本
+  data\              SQLite 数据库、上传、生成媒体（卸载时保留）
+  start-studio.cmd   快捷方式指向的启动脚本（写入了端口与 APP_ENV）
+  install.json       安装清单：版本、端口、路径
+  studio.ico
+  uninstall.exe
+```
+
+常用参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `--dir <路径>` | 换安装目录 |
+| `--port <端口>` | 换 HTTP 端口（默认 8010，被占用时自动往后找空闲端口） |
+| `--extras s3,pdf` | 额外安装可选依赖（可选值见 `pyproject.toml` 的 `optional-dependencies`） |
+| `--python <路径>` | 指定用哪个 Python 建虚拟环境 |
+| `--with-ffmpeg` | 尝试用 `winget` 安装 FFmpeg |
+| `--no-launch` | 装完不自动启动（脚本化安装/升级时常用） |
+| `--no-shortcuts` / `--no-registry` | 不建快捷方式 / 不写卸载注册表项 |
+| `--dry-run` | 只打印计划，不改动任何东西 |
+
+- 装到非默认目录后，卸载时也要带同样的 `--dir <路径>`。
+- 失败信息会留在窗口里（`Press Enter to close`）；先排查网络与代理（pip 走 `PIP_INDEX_URL`），再重跑。
+- 安装器只做「Python 环境 + 依赖 + 快捷方式」，FFmpeg 若缺失会在第 7 步给出明确提示。
+
+### 2.3 首次安装（源码方式）
 
 ```powershell
 cd C:\Users\liumiao\Desktop\video_make\video_agent
@@ -55,10 +103,17 @@ pip install -e ".[dev]"
 Copy-Item .env.example .env           # 可选，.env 会被自动读取；不要提交进仓库
 ```
 
-### 2.3 启动与停止
+### 2.4 启动与停止
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8010
+```
+
+也可以用它自带的桌面启动器：自动挑一个空闲端口，等 `/health` 通了再打开浏览器：
+
+```powershell
+.\.venv\Scripts\python.exe backend\app\desktop.py --port 8010
+.\.venv\Scripts\python.exe backend\app\desktop.py --port 8010 --no-browser   # 只起服务
 ```
 
 - 停止：在该终端按 `Ctrl+C`。
@@ -74,7 +129,7 @@ Copy-Item .env.example .env           # 可选，.env 会被自动读取；不�
 | `/media/...` | 生成文件的静态访问（本地存储时） |
 | `/api/v1/...` | 业务接口前缀 |
 
-### 2.4 启动自检
+### 2.5 启动自检
 
 1. `/health` 返回 200 且 `status=ok`。
 2. 控制台右上角徽标显示 **服务正常**，环境标签形如 `development · local · 17 agents`。
@@ -83,7 +138,7 @@ Copy-Item .env.example .env           # 可选，.env 会被自动读取；不�
    - `任务` 一行显示 `inline · 4 workers`；
    - `智能体` 显示 `17/17 启用`。
 
-### 2.5 用 Docker 启动
+### 2.6 用 Docker 启动
 
 ```powershell
 docker compose up --build          # 打开 http://127.0.0.1:8000/
@@ -95,7 +150,7 @@ docker compose down -v             # 停止并清空数据库与生成媒体
 容器内固定：SQLite 在 `/data/studio.db`、媒体在 `/data/storage`、任务 inline、单 uvicorn worker，
 `/data` 挂在命名卷 `studio-data` 上，重建镜像不丢数据。
 
-### 2.6 常用环境变量
+### 2.7 常用环境变量
 
 配置文件与变量的优先级：`config/app.yaml` < `config/environments/<APP_ENV>.yaml` < 环境变量。
 
@@ -115,7 +170,7 @@ docker compose down -v             # 停止并清空数据库与生成媒体
 
 模型密钥只通过环境变量提供，`config/providers/*.yaml` 里只写**变量名**，不写密钥。
 
-### 2.7 数据落盘位置
+### 2.8 数据落盘位置
 
 | 路径 | 内容 |
 | --- | --- |
@@ -484,9 +539,10 @@ Invoke-RestMethod -Method Post -Uri "$base/projects/$pid/tasks/$tid/cancel"
 ### 7.3 接入真实模型（示例：把剧本智能体换到 OpenAI 兼容网关）
 
 1. 在 `config/providers/llm.yaml` 把目标 provider 的 `enabled` 改为 `true`
-   （`openai` 或 `openai_compatible`）；
-2. 设置密钥环境变量：`OPENAI_API_KEY` / `OPENAI_BASE_URL`，或
-   `OPENAI_COMPAT_API_KEY` / `OPENAI_COMPAT_BASE_URL`；写进 `.env` 也可（勿提交）；
+   （`openai` 或 `openai_compatible`），并把 `url` / `api_key` 填成自己的地址和密钥：
+   `url` 可直接写 `https://api.deepseek.com/v1`，`api_key` 建议写 `env:OPENAI_COMPAT_API_KEY`；
+2. 如果 `api_key` 用的是 `env:名字`，就在 `.env` 里补一行（如 `OPENAI_COMPAT_API_KEY=你的密钥`,
+   勿提交）；直接粘贴密钥则不需要 `.env`；
 3. 把 `config/agents/script.yaml` 的 `model.provider` / `model.model_id` 改成该 provider 与模型，
    或在控制台用「版本编辑」改（无需重启）；
 4. 重启服务让 provider YAML 生效（provider 配置不走数据库覆盖）；
@@ -495,15 +551,47 @@ Invoke-RestMethod -Method Post -Uri "$base/projects/$pid/tasks/$tid/cancel"
 6. 成本：provider YAML 的 `extra.input_cost_per_1k` / `output_cost_per_1k` 参与计费，
    Dashboard「成本」显示累计 `spent_usd`。
 
-可选 provider（默认全部关闭）：图片 `openai`/`local_comfy`、语音 `openai`/`local_tts`、
-视觉 `openai`/`local_vision`、视频 `local_worker`/`hosted`。环境变量名见各 YAML 的
-`api_key_env` / `base_url_env`。
+可选 provider（`openai`/`openai_compatible`/`qwen` 默认只启用本机 `qwen`）：图片 `openai`/`local_comfy`、
+语音 `openai`/`local_tts`、视觉 `openai`/`local_vision`、视频 `openai_videos`（本机 `minimax`）/
+`local_worker`/`hosted`。每个 provider 只看三个字段：`url`（接口地址）、`api_key`
+（`env:环境变量名` 或直接写密钥）、`models`（可用模型名）。
 
 排障要点：
 
 - provider 未启用或缺少密钥 → 接口返回 provider 不可用类错误，日志含 `ProviderUnavailableError`；
 - 模型 ID 不在该 provider 的 `models` 列表、或传了 `extra.supported_params` 之外的生成参数 → 配置类错误；
 - 不想全链路接真模型时，可用 `AGENT_MODEL_PROVIDER` / `AGENT_MODEL_ID` 强制统一到某个 provider（仅开发环境）。
+
+### 7.4 本机双模型：vLLM 文字 + MiniMax 视频
+
+文字与视频来自不同厂商完全没问题——它们分属 `config/providers/llm.yaml` 与
+`config/providers/video.yaml` 两个文件，互不影响。仓库里已按本机地址配好：
+
+| 用途 | provider | 文件 | 地址 | 模型 |
+| --- | --- | --- | --- | --- |
+| 12 个文字类智能体 | `qwen` | `config/providers/llm.yaml` | `http://127.0.0.1:8000/v1` | `qwen3.8-27b` |
+| 视频智能体 | `minimax` | `config/providers/video.yaml` | `http://127.0.0.1:8090/v1` | `minimax-h3` |
+
+密钥放在 `.env`（已被 `.gitignore` 忽略）：
+
+```ini
+QWEN_API_KEY=qwen3.8
+MINIMAX_API_KEY=minimax
+```
+
+要点：
+
+1. 该 vLLM 网关要求每次请求都带 `reasoning_effort`（缺了报
+   `Unexpected reasoning effort None`），所以 `qwen` 的 `extra.request_defaults` 里固定写了
+   `reasoning_effort: medium`；改成 `low` 更快、`xhigh` 更细；
+2. 视频服务是「提交 → 轮询 → 取文件」：`POST /v1/videos` → `GET /v1/videos/{id}` →
+   `GET /v1/videos/{id}/content`，对应 `protocol: openai_videos` 与 `extra.content_suffix: /content`；
+3. 该服务是纯文生视频（传参考图会 400），适配器默认只发 `prompt` / `duration_seconds` /
+   `width` / `height`，参考图会被忽略并记在 `meta.dropped_inputs`；
+4. 单条最长 14.375 秒，`extra.max_duration_seconds: 14` 会先截断再提交（`meta.duration_clamped_from`）；
+5. 显存吃紧时在 `minimax` 的 `extra.request_defaults` 里加 `width: 848, height: 480`，
+   或降低 `steps`（默认 8，越小越快）；
+6. 改完 provider YAML 需重启服务；智能体的 provider/model 可以用控制台「模型配置」改，不必重启。
 
 ---
 
@@ -575,12 +663,17 @@ Docker 方式：`docker compose stop` → 复制卷 `ai-film-studio_studio-data`
 
 ### 9.4 升级
 
+源码方式：
+
 ```powershell
 git pull
 pip install -e ".[dev]"
 python scripts/export_schemas.py     # 配置 schema 变更时，让 config/schemas 与代码一致
 python -m pytest                     # 可选，升级前自检
 ```
+
+一键安装方式：直接运行新版 `install.exe`。它会先停掉正在运行的服务，复用已有的 `venv`，
+重装依赖并覆盖 `app\`，`data\` 原样保留。装到自定义目录时要带上同样的 `--dir`。
 
 重启后检查 `/health` 与控制台「模型配置」页签的 `配置版本` 是否更新。
 
@@ -608,6 +701,9 @@ python -m pytest                     # 可选，升级前自检
 | 端口被占用 | 已有旧进程 | `netstat -ano` 找到监听 8010 的 PID 后结束该进程，或换 `--port` |
 | 控制台中文乱码（终端日志） | Windows 终端代码页 | `chcp 65001`，或设 `$env:PYTHONIOENCODING="utf-8"` |
 | 「未注册的工作流 handler 'xxx'，可用: …」 | 工作流节点引用了不存在的 handler/agent | 核对 `config/workflows/*.yaml` 的 `handler` 与 `config/agents/` 下的 agent id |
+| 双击 `install.exe` 后窗口一闪而过 | 版本不匹配/权限/被杀软拦截 | 在命令行里运行 `install.exe --no-pause` 看完整输出；SmartScreen 选「更多信息 → 仍要运行」 |
+| `install.exe` 卡在 `[3/7] Dependencies` | PyPI 不可达（公司网络/代理） | 设 `PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple` 后重跑（脚本自己下的 Python 同理需要能出国/走代理） |
+| `uninstall.exe` 提示文件夹被占用 | 控制台窗口还开着 | 关掉正在运行的控制台窗口后重试；或重启电脑再卸载 |
 
 ---
 

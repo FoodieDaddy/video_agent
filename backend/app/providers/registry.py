@@ -28,6 +28,7 @@ from app.providers.openai_compat import (
     OpenAICompatibleVisionProvider,
     OpenAIImageProvider,
     OpenAISpeechProvider,
+    OpenAIVideosProvider,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ _PROTOCOL_IMPLS: dict[tuple[str, str], type] = {
     ("image", "openai_images"): OpenAIImageProvider,
     ("audio", "openai_speech"): OpenAISpeechProvider,
     ("video", "http_task"): HttpTaskVideoProvider,
+    ("video", "openai_videos"): OpenAIVideosProvider,
     ("video", "local_worker"): LocalWorkerVideoProvider,
 }
 
@@ -49,7 +51,7 @@ def _mock_provider_config(capability: str, name: str) -> ProviderConfig:
         name=name,
         capability=capability,
         enabled=True,
-        kind="mock",
+        protocol="mock",
         timeout_seconds=120,
         max_concurrency=4,
     )
@@ -64,13 +66,14 @@ def resolve_provider_config(config_store: ConfigStore, capability: str, name: st
     config = config_store.provider(capability, name)
     if not config.enabled:
         raise ProviderUnavailableError(
-            f"Provider '{name}' ({capability}) is disabled in its config file",
+            f"Provider '{name}' ({capability}) is disabled in its config file; set `enabled: true`",
             details={"provider": name, "capability": capability},
         )
-    if config.api_key_env and not os.getenv(config.api_key_env):
+    if config.declares_api_key() and not config.resolved_api_key():
+        source = config.api_key_source()
         raise ProviderUnavailableError(
-            f"Provider '{name}' is enabled but `{config.api_key_env}` is not set",
-            details={"provider": name, "env": config.api_key_env},
+            f"Provider '{name}' is enabled but no API key was found; set `{source}` in .env",
+            details={"provider": name, "api_key": source},
         )
     return config
 
@@ -78,8 +81,8 @@ def resolve_provider_config(config_store: ConfigStore, capability: str, name: st
 def _provider_options(config_store: ConfigStore, config: ProviderConfig, model: ModelRef) -> dict[str, Any]:
     settings = getattr(config_store, "settings", None)
     options: dict[str, Any] = {
-        "api_key": config.api_key(),
-        "base_url": config.resolved_base_url(),
+        "api_key": config.resolved_api_key(),
+        "base_url": config.resolved_url(),
         "timeout_seconds": config.timeout_seconds,
         "max_concurrency": config.max_concurrency,
         # Resolved once in settings so mock/real media providers agree on the binary.
@@ -87,17 +90,18 @@ def _provider_options(config_store: ConfigStore, config: ProviderConfig, model: 
         "ffprobe_bin": getattr(settings, "ffprobe_bin", None) or os.getenv("FFPROBE_BIN", "ffprobe"),
     }
     options.update(config.extra or {})
-    if config.endpoint_env:
-        options.setdefault("endpoint", os.getenv(config.endpoint_env))
+    endpoint = config.resolved_endpoint()
+    if endpoint:
+        options.setdefault("endpoint", endpoint)
     if config.capability == "video":
-        options["base_url"] = config.resolved_base_url() or config.resolved_endpoint()
+        options["base_url"] = config.resolved_url() or config.resolved_endpoint()
     options.update(model.provider_options or {})
     return options
 
 
 def build_provider(config_store: ConfigStore, capability: str, model: ModelRef):
     config = resolve_provider_config(config_store, capability, model.provider)
-    if config.kind == "mock" or model.provider == "mock":
+    if config.protocol_name() == "mock" or model.provider == "mock":
         return build_mock_provider(capability, model.model_id, _provider_options(config_store, config, model))
 
     if config.models and model.model_id not in config.models:
@@ -109,7 +113,7 @@ def build_provider(config_store: ConfigStore, capability: str, model: ModelRef):
             raise ConfigurationError(message)
         logger.warning(message)
 
-    protocol = str(config.extra.get("protocol") or config.kind or "")
+    protocol = config.protocol_name()
     impl = _PROTOCOL_IMPLS.get((capability, protocol))
     if impl is None:
         raise ConfigurationError(

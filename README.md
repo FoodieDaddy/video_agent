@@ -19,6 +19,12 @@ The repository ships a **mock provider** that produces real files (PNG frames, s
 MP4 clips, WAV narration) through FFmpeg, so the entire pipeline runs offline with no
 API key and no GPU — tests and the smoke script depend on exactly that.
 
+The shipped agent YAML points the twelve text agents at a local vLLM (`qwen`,
+`http://127.0.0.1:8000/v1`) and the video agent at a local MiniMax-H3 service (`minimax`,
+`http://127.0.0.1:8090/v1`); both keys live in `.env`. To run fully offline instead, set
+`AGENT_MODEL_PROVIDER=mock` or edit the `model:` block of `config/agents/*.yaml` — see
+[model configuration](docs/model_configs/README.md).
+
 ## Quick start
 
 ```powershell
@@ -31,6 +37,9 @@ ffmpeg -version
 
 # run the API + built-in console
 uvicorn app.main:app --app-dir backend --reload --port 8000
+
+# or: pick a free port, wait for /health and open the browser for you
+python backend\app\desktop.py --port 8010
 ```
 
 Open <http://127.0.0.1:8000/> for the console (create a project → 导入示例小说 →
@@ -42,6 +51,31 @@ Offline end-to-end check without the server:
 python scripts/smoke_pipeline.py        # full workflow, mock provider, auto-approves gates
 python -m pytest                        # unit + integration + HTTP e2e suite
 ```
+
+## Windows one-click install
+
+Releases ship two executables — no Python, no Docker, no admin rights required:
+
+| File | What it does |
+| --- | --- |
+| `install.exe` | Downloads a private CPython 3.12 when the machine has none, creates `%LOCALAPPDATA%\AIFilmStudio\venv`, installs the dependencies from `pyproject.toml`, copies the app, writes `start-studio.cmd`, adds desktop/Start-menu shortcuts and an uninstall entry |
+| `uninstall.exe` | Stops the studio, removes shortcuts, the registry entry, the venv and the app files; **keeps** `data\` unless you pass `--purge` |
+
+Double-click `install.exe`, wait for the dependency step, and the console opens in your browser.
+`install.exe --dry-run` prints the plan first; `--dir`, `--port`, `--extras s3,pdf`,
+`--no-shortcuts`, `--no-registry`, `--no-launch` and `--with-ffmpeg` are also available. Full walk
+through: [docs/manual/README.md](docs/manual/README.md) § 2.2.
+
+Building the artifacts (Windows; the script bootstraps its own build interpreter):
+
+```powershell
+python scripts/build_installers.py    # -> dist\install.exe + dist\uninstall.exe
+```
+
+A clean python.org CPython is installed into `build/` first, because an executable frozen from a
+conda interpreter cannot load `_ssl` and would be unable to download anything. Both exes run
+`--selftest` (SSL, embedded payload, FFmpeg, arch) before the build is considered successful —
+see [ADR 0008](docs/decisions/0008-windows-one-click-installer.md).
 
 ## What you get
 
@@ -65,8 +99,9 @@ backend/tests/          pytest suite (unit, service, HTTP e2e)
 config/                 app.yaml, agents/, providers/, workflows/, prompts/, schemas/, environments/
 deployment/             docker/ (image) and nginx/ (reverse proxy reference config)
 docs/                   manual (操作手册), architecture, api, database, agents, model_configs, testing, decisions (ADR)
+installer/              stdlib-only install.py / uninstall.py frozen into dist\install.exe and dist\uninstall.exe
 samples/                novel_sample.txt used by the console import button and tests
-scripts/                smoke_pipeline.py, export_schemas.py
+scripts/                smoke_pipeline.py, export_schemas.py, build_installers.py
 web/                    no-build console (plain HTML/CSS/JS) served by FastAPI
 docker-compose.yml      single-container API stack (SQLite + local storage, tasks inline)
 ```
@@ -119,6 +154,8 @@ and generated media survive rebuilds (`docker compose down -v` drops them).
 - `tasks.inline: false` expects an external worker that polls `tasks`; only the inline
   runner ships today. Keep `inline: true` (single container) until that worker exists.
 - The console is intentionally vanilla JS: it exercises the API without a build step.
+- `install.exe` / `uninstall.exe` are unsigned, so SmartScreen warns on first run; installing
+  needs network access to PyPI (and to python.org when the machine has no Python 3.11+).
 
 ## License
 

@@ -7,9 +7,25 @@ resolves provider + model + parameters from these objects.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# ``url: env:SOME_VAR`` / ``api_key: env:SOME_VAR`` reads the value from the
+# environment; a bare value is used verbatim (so a base URL, or even a key, may
+# be typed straight into the provider file).
+ENV_REF_PREFIX = "env:"
+
+
+def resolve_ref(value: str | None) -> str | None:
+    """Return a literal config value, resolving ``env:NAME`` references."""
+    if not value:
+        return None
+    text = str(value).strip()
+    if text.lower().startswith(ENV_REF_PREFIX):
+        return os.getenv(text[len(ENV_REF_PREFIX) :].strip()) or None
+    return text or None
 
 
 class AgentMeta(BaseModel):
@@ -112,36 +128,75 @@ class AgentConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
+    """One provider entry in ``config/providers/<capability>.yaml``.
+
+    Field names are the plain ones an operator looks for: ``url``, ``api_key``,
+    ``protocol``.  Either may be written as ``env:NAME`` to read the value from an
+    environment variable instead.  The old ``kind`` / ``api_key_env`` /
+    ``base_url_env`` / ``base_url`` spelling is still accepted for compatibility.
+    """
+
     model_config = ConfigDict(extra="allow")
 
     name: str
     capability: str
     enabled: bool = False
-    kind: str = ""
-    api_key_env: str | None = None
-    base_url_env: str | None = None
-    endpoint_env: str | None = None
-    base_url: str | None = None
+    # openai_chat | openai_images | openai_speech | http_task | local_worker | mock
+    protocol: str = ""
+    url: str | None = None
+    api_key: str | None = None
+    endpoint: str | None = None
     timeout_seconds: int = 120
     max_concurrency: int = 2
     models: list[str] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)
 
-    def api_key(self) -> str | None:
-        import os
+    # --- legacy spelling (kept so an existing provider file still loads) ---
+    kind: str = ""
+    api_key_env: str | None = None
+    base_url_env: str | None = None
+    base_url: str | None = None
+    endpoint_env: str | None = None
 
+    def protocol_name(self) -> str:
+        return str(self.extra.get("protocol") or self.protocol or self.kind or "")
+
+    def declares_api_key(self) -> bool:
+        return bool(self.api_key or self.api_key_env)
+
+    def api_key_source(self) -> str:
+        """Name of the thing holding the key - for messages, never the key itself."""
+        if self.api_key_env:
+            return self.api_key_env
+        text = str(self.api_key or "").strip()
+        if not text:
+            return ""
+        if text.lower().startswith(ENV_REF_PREFIX):
+            return text[len(ENV_REF_PREFIX) :].strip()
+        return "api_key in the provider file"
+
+    def resolved_api_key(self) -> str | None:
+        value = resolve_ref(self.api_key)
+        if value:
+            return value
         return os.getenv(self.api_key_env) if self.api_key_env else None
 
-    def resolved_base_url(self, default: str | None = None) -> str | None:
-        import os
-
+    def resolved_url(self, default: str | None = None) -> str | None:
+        value = resolve_ref(self.url)
+        if value:
+            return value
         if self.base_url_env and os.getenv(self.base_url_env):
             return os.getenv(self.base_url_env)
         return self.base_url or default
 
-    def resolved_endpoint(self) -> str | None:
-        import os
+    # Kept for callers written against the old name.
+    def resolved_base_url(self, default: str | None = None) -> str | None:
+        return self.resolved_url(default)
 
+    def resolved_endpoint(self) -> str | None:
+        value = resolve_ref(self.endpoint)
+        if value:
+            return value
         if self.endpoint_env and os.getenv(self.endpoint_env):
             return os.getenv(self.endpoint_env)
         return self.extra.get("endpoint")

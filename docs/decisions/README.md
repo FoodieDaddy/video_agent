@@ -16,6 +16,7 @@ Revisit when**.
 | [0005](0005-header-dev-auth-and-project-scoping.md) | Header auth for development, project-scoped authorization | Accepted |
 | [0006](0006-task-runner-and-sse-from-db-events.md) | Thread runner + `task_events` table as the SSE source | Accepted |
 | [0007](0007-mock-first-media-and-local-storage.md) | Mock provider that renders real media; local storage by default | Accepted |
+| [0008](0008-windows-one-click-installer.md) | Windows one-click install/uninstall executables instead of a bundled runtime | Accepted |
 
 ## Conventions
 

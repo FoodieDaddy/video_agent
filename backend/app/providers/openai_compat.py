@@ -2,13 +2,13 @@
 
 * ``OpenAICompatibleProvider`` - chat/vision/image/speech over the OpenAI HTTP
   contract.  Any compatible gateway (Azure-style proxies, self-hosted vLLM,
-  Together, DashScope compatible mode ...) works by pointing ``base_url_env`` at
-  the gateway.
+  Together, DashScope compatible mode ...) works by pointing the provider's
+  ``url`` at the gateway (``url: env:OPENAI_COMPAT_BASE_URL`` for instance).
 * ``HttpTaskVideoProvider`` - a deliberately small, documented contract for
   commercial video APIs: submit -> poll -> download.
 
-Secrets always come from environment variables declared in YAML; they never live
-in configuration files.
+Provider YAML names the environment variable holding a credential
+(``api_key: env:OPENAI_API_KEY``) instead of storing the secret itself.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
@@ -49,22 +50,43 @@ _JSON_FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 
 def _extract_json(text: str) -> dict[str, Any]:
+    """Pull the JSON object out of a model reply.
+
+    Reasoning models often narrate before answering and close the trace with
+    ``<｜end▁of▁thinking｜>``, and some keep prose *after* the object, so a plain
+    ``json.loads`` on the whole string is not enough. Candidate sources are
+    tried in order and the decoding that covers the most text wins, which
+    prefers an outermost object over one nested inside it.
+    """
     candidate = text.strip()
+    sources: list[str] = []
     fenced = _JSON_FENCE.search(candidate)
     if fenced:
-        candidate = fenced.group(1).strip()
-    if not candidate.startswith("{"):
-        start = candidate.find("{")
-        end = candidate.rfind("}")
-        if start >= 0 and end > start:
-            candidate = candidate[start : end + 1]
-    try:
-        payload = json.loads(candidate)
-    except json.JSONDecodeError as exc:
-        raise ProviderError(f"Provider returned non-JSON output: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise ProviderError("Provider returned JSON that is not an object")
-    return payload
+        sources.append(fenced.group(1).strip())
+    if "</think" in candidate:
+        sources.append(candidate.rsplit("</think", 1)[-1].lstrip(">").strip())
+    sources.append(candidate)
+
+    best: tuple[int, int, dict[str, Any]] | None = None
+    decoder = json.JSONDecoder()
+    for source in sources:
+        for index, char in enumerate(source):
+            if char != "{":
+                continue
+            try:
+                payload, end = decoder.raw_decode(source, index)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+            score = (end, -index)
+            if best is None or score > best[:2]:
+                best = (end, -index, payload)
+        if best is not None:
+            break
+    if best is None:
+        raise ProviderError(f"Provider returned non-JSON output: {text[:400]}")
+    return best[2]
 
 
 def _data_url(content: bytes, mime: str) -> str:
@@ -498,3 +520,189 @@ class LocalWorkerVideoProvider(HttpTaskVideoProvider):
         options = dict(options or {})
         options.setdefault("max_wait_seconds", float(os.getenv("LOCAL_VIDEO_MAX_WAIT", "1800")))
         super().__init__(name, model_id, options)
+
+
+class OpenAIVideosProvider(_HttpProviderMixin, VideoProvider):
+    """Submit/poll/download against an OpenAI-style ``/v1/videos`` service.
+
+    Contract (a local MiniMax / gateway service exposing the OpenAI video shape)::
+
+        POST {base}{submit_path}            -> 202 {"id": "...", "status": "queued"}
+        GET  {base}{status_path}/{id}       -> {"status": "queued|running|succeeded|failed",
+                                                "output": {...}, "links": {"content": "/v1/videos/<id>/content"}}
+        GET  {base}{status_path}/{id}{content_suffix} -> the mp4 bytes
+
+    The difference from :class:`HttpTaskVideoProvider` is where the file comes
+    from: these services answer with server-side paths (``/workspace/out.mp4``)
+    and serve the bytes from their own ``/content`` route, so a URL found in the
+    body is used when present and the content route is the fallback.
+
+    Only the fields the vendor declares are sent: ``extra.request_fields`` picks
+    them from the request (default ``prompt, duration_seconds, width, height``)
+    and ``extra.request_defaults`` adds vendor-specific keys such as ``steps``.
+    """
+
+    capability = "video"
+
+    _SUCCESS = {"succeeded", "completed", "success", "done"}
+    _FAILURE = {"failed", "error", "cancelled", "canceled"}
+
+    def __init__(self, name: str, model_id: str, options: dict[str, Any] | None = None) -> None:
+        super().__init__(name=name, model_id=model_id, options=options)
+        self.submit_path = self.options.get("submit_path", "/videos")
+        self.status_path = self.options.get("status_path", "/videos")
+        self.cancel_path = self.options.get("cancel_path", "/videos")
+        self.content_suffix = self.options.get("content_suffix", "/content")
+        self.poll_interval = float(self.options.get("poll_interval_seconds") or 5)
+        self.max_wait = float(self.options.get("max_wait_seconds") or 900)
+        self.max_duration = float(self.options.get("max_duration_seconds") or 0)
+
+    async def health(self) -> bool:
+        return bool(self.options.get("base_url"))
+
+    def _job_payload(self, request: VideoRequest) -> dict[str, Any]:
+        duration = request.duration_seconds
+        if self.max_duration and duration > self.max_duration:
+            duration = self.max_duration
+        values = {
+            "prompt": request.prompt,
+            "negative_prompt": request.negative_prompt,
+            "duration_seconds": duration,
+            "duration": duration,
+            "width": request.width,
+            "height": request.height,
+            "aspect_ratio": request.aspect_ratio,
+            "model": request.model_id or self.model_id,
+        }
+        fields = self.options.get("request_fields") or (
+            "prompt",
+            "duration_seconds",
+            "width",
+            "height",
+        )
+        payload = {key: values[key] for key in fields if values.get(key) not in (None, "")}
+        payload.update(self.options.get("request_defaults") or {})
+        return payload
+
+    def _absolute(self, path: str) -> str:
+        if path.startswith(("http://", "https://")):
+            return path
+        base = str(self.options.get("base_url") or "").rstrip("/")
+        base_path = urlsplit(base).path.rstrip("/")
+        if path.startswith("/") and base_path and path.startswith(f"{base_path}/"):
+            # The service returned a server-absolute path that already includes /v1.
+            return urlunsplit(urlsplit(base)[:2] + (path, "", ""))
+        return f"{base}/{path.lstrip('/')}"
+
+    async def _fetch_content(
+        self, client: httpx.AsyncClient, job_id: str, state: dict[str, Any], headers: dict[str, str]
+    ) -> bytes:
+        output = state.get("output") or {}
+        links = state.get("links") or {}
+        candidates = [
+            state.get("video_url"),
+            state.get("output_url"),
+            state.get("url"),
+            links.get("content"),
+            links.get("video"),
+            (output.get("video_url") if isinstance(output, dict) else None),
+            f"{self.status_path}/{job_id}{self.content_suffix}",
+        ]
+        attempts: list[str] = []
+        for candidate in candidates:
+            if not candidate:
+                continue
+            url = self._absolute(str(candidate))
+            if url in attempts:
+                continue
+            attempts.append(url)
+            response = await client.get(url, headers=headers)
+            if response.status_code < 400 and response.content:
+                return response.content
+        raise ProviderError(
+            f"{self.name} video job {job_id} finished but no file could be downloaded; tried {attempts}"
+        )
+
+    async def generate(self, request: VideoRequest) -> VideoResult:
+        base_url = str(self.options.get("base_url") or "").rstrip("/")
+        if not base_url:
+            raise ProviderUnavailableError(
+                f"Video provider '{self.name}' has no url configured (see its provider YAML)"
+            )
+        headers = self._headers()
+        payload = self._job_payload(request)
+        dropped = [
+            name
+            for name in ("reference_image", "first_frame", "last_frame")
+            if getattr(request, name)
+        ]
+        timeout = float(self.options.get("timeout_seconds") or 300)
+
+        async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
+            submit = await client.post(self.submit_path, json=payload, headers=headers)
+            if submit.status_code >= 400:
+                raise ProviderError(
+                    f"{self.name} video submit failed ({submit.status_code}): {submit.text[:400]}"
+                )
+            state = submit.json() or {}
+            job_id = str(
+                state.get("id") or state.get("task_id") or state.get("request_id") or ""
+            )
+            if not job_id:
+                raise ProviderError(f"{self.name} video submit returned no job id: {state}")
+
+            deadline = time.monotonic() + self.max_wait
+            while True:
+                status = str(state.get("status") or "").lower()
+                if status in self._SUCCESS:
+                    break
+                if status in self._FAILURE:
+                    raise ProviderError(
+                        f"{self.name} video job {job_id} failed: "
+                        f"{state.get('error') or state.get('message') or state}"
+                    )
+                if time.monotonic() >= deadline:
+                    raise ProviderError(
+                        f"{self.name} video job {job_id} timed out after {self.max_wait}s"
+                    )
+                await asyncio.sleep(self.poll_interval)
+                polled = await client.get(f"{self.status_path}/{job_id}", headers=headers)
+                if polled.status_code >= 400:
+                    raise ProviderError(
+                        f"{self.name} status check failed ({polled.status_code}): {polled.text[:400]}"
+                    )
+                state = polled.json() or {}
+
+            content = await self._fetch_content(client, job_id, state, headers)
+
+        output = state.get("output") or {}
+        duration = float(
+            (output.get("duration_seconds") if isinstance(output, dict) else None)
+            or request.duration_seconds
+        )
+        meta: dict[str, Any] = {"job_id": job_id, "request": payload}
+        if self.max_duration and request.duration_seconds > self.max_duration:
+            meta["duration_clamped_from"] = request.duration_seconds
+        if isinstance(output, dict):
+            meta["output"] = {key: output.get(key) for key in ("mp4", "wav", "width", "height", "fps")}
+        if dropped:
+            # The service is text-to-video: reference frames are not sent.
+            meta["dropped_inputs"] = dropped
+        return VideoResult(
+            content=content,
+            mime="video/mp4",
+            duration_seconds=duration,
+            provider=self.name,
+            model_id=request.model_id or self.model_id,
+            task_ref=job_id,
+            cost_usd=self._cost(units=duration),
+            meta=meta,
+        )
+
+    async def cancel(self, task_ref: str) -> bool:
+        base_url = str(self.options.get("base_url") or "").rstrip("/")
+        if not base_url:
+            return False
+        async with httpx.AsyncClient(base_url=base_url, timeout=60) as client:
+            response = await client.post(f"{self.cancel_path}/{task_ref}/cancel", headers=self._headers())
+            return response.status_code < 400

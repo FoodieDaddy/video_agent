@@ -122,7 +122,6 @@ class ConfigStore:
             bucket: dict[str, ProviderConfig] = {}
             for name, raw in entries.items():
                 raw = dict(raw or {})
-                raw.setdefault("kind", capability)
                 raw.setdefault("name", name)
                 try:
                     bucket[name] = ProviderConfig.model_validate(

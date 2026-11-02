@@ -36,12 +36,15 @@ def settings(tmp_path, monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")          # config/environments/test.yaml
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(data_dir / 'studio.db').as_posix()}")
     monkeypatch.setenv("STORAGE_ROOT", str(data_dir / "storage"))
+    monkeypatch.setenv("AGENT_MODEL_PROVIDER", "mock")   # never reach a live endpoint
     get_settings.cache_clear()
     return load_settings(data_dir=data_dir)
 ```
 
 * `settings` — isolated SQLite file + storage root; `APP_ENV=test` forces inline tasks,
-  `max_workers=1` and `WARNING` logs.
+  `max_workers=1` and `WARNING` logs. The shipped agent YAML points at a local vLLM
+  (`qwen`) and a local video service (`minimax`), so the fixture pins every agent to the
+  mock provider; a test must never depend on a model server being up.
 * `app` / `client` — `create_app(settings)` inside `TestClient` so the lifespan boots the
   engine, schema, runtime and stored config overrides.
 * `runtime` — the same `AppRuntime` the app used (config store, storage, runner).
@@ -71,6 +74,11 @@ database would leak into the next one.
 2. `pytest` — the full suite on Ubuntu with `ffmpeg` installed via `apt-get`.
 3. Optionally `python scripts/export_schemas.py` and fail if `config/schemas/*.json` changed,
    which keeps the JSON schemas committed alongside the pydantic models.
+4. `windows-installer` (manual `workflow_dispatch` only): `python scripts/build_installers.py`
+   on `windows-latest`, then `dist\install.exe --selftest` and `dist\uninstall.exe --selftest`,
+   and the two exes are uploaded as the `windows-installers` artifact. The self test is what
+   catches a frozen exe whose `_ssl` cannot load — such an exe cannot download dependencies and
+   must never reach a user.
 
 Mypy is configured but advisory (`ignore_missing_imports = true`).
 

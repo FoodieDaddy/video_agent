@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 为项目生成编排计划（节点顺序、人工审核点），实际执行由工作流引擎负责。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.2

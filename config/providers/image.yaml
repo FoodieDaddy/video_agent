@@ -1,8 +1,10 @@
-# Image providers (character portraits, turnaround sheets, costume sheets).
+# 图片生成供应商（角色定妆照、三视图、服装图）。
+#
+# 字段说明见 llm.yaml 顶部：enabled / protocol / url / api_key / models。
 providers:
   mock:
     enabled: true
-    kind: mock
+    protocol: mock
     timeout_seconds: 120
     max_concurrency: 4
     models:
@@ -10,27 +12,24 @@ providers:
 
   openai:
     enabled: false
-    kind: openai_images
-    api_key_env: OPENAI_API_KEY
-    base_url_env: OPENAI_BASE_URL
-    base_url: https://api.openai.com/v1
+    protocol: openai_images
+    url: https://api.openai.com/v1
+    api_key: env:OPENAI_API_KEY
     models:
       - gpt-image-1
       - dall-e-3
     timeout_seconds: 180
     max_concurrency: 2
     extra:
-      protocol: openai_images
       unit_cost: 0.04
 
+  # 本地 ComfyUI / SD 服务（暴露 OpenAI 兼容的 /images 接口）。
   local_comfy:
     enabled: false
-    kind: openai_images
-    api_key_env: LOCAL_IMAGE_API_KEY
-    base_url_env: LOCAL_IMAGE_BASE_URL
+    protocol: openai_images
+    url: env:LOCAL_IMAGE_BASE_URL
+    api_key: env:LOCAL_IMAGE_API_KEY
     models:
       - flux-dev
     timeout_seconds: 300
     max_concurrency: 1
-    extra:
-      protocol: openai_images

@@ -75,3 +75,36 @@ jobs:
           curl -fsS http://127.0.0.1:8000/api/v1/meta > /dev/null
           docker logs studio | tail -n 20
           docker rm -f studio
+
+  # Builds the Windows one-click installer. Manual trigger only: it downloads a CPython
+  # runtime and ~200 MB of wheels, which is slow and noisy for pull requests.
+  windows-installer:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    needs: test
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The script bootstraps its own build interpreter (python.org CPython) into build/
+      # and fails the build if either exe cannot pass `--selftest` (e.g. broken _ssl).
+      - name: Build install.exe and uninstall.exe
+        run: python scripts/build_installers.py
+
+      - name: Self test
+        run: |
+          .\dist\install.exe --selftest
+          .\dist\uninstall.exe --selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            dist/install.exe
+            dist/uninstall.exe
+          if-no-files-found: error

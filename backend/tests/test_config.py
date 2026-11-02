@@ -69,6 +69,9 @@ def test_default_workflow_has_handlers_and_review_gates(runtime):
 
 
 def test_provider_yaml_never_contains_secrets(settings):
+    """A provider file may *name* the variable holding the key, never the key itself."""
+    import yaml
+
     providers_dir = settings.config_dir / "providers"
     files = sorted(providers_dir.glob("*.yaml"))
     assert files
@@ -76,4 +79,58 @@ def test_provider_yaml_never_contains_secrets(settings):
     for path in files:
         text = path.read_text(encoding="utf-8")
         assert "sk-" not in text, path
-        assert "api_key:" not in text, path
+        entries = (yaml.safe_load(text) or {}).get("providers") or {}
+        for name, provider in entries.items():
+            value = str((provider or {}).get("api_key") or "")
+            assert not value or value.startswith("env:"), (
+                f"{path.name}:{name} must reference env:NAME instead of a literal key"
+            )
+
+
+def test_provider_plain_keys_resolve(monkeypatch):
+    """`url` / `api_key` are the plain names; `env:NAME` reads a variable."""
+    from app.core.config_models import ProviderConfig
+
+    monkeypatch.setenv("DEMO_BASE_URL", "https://demo.example.com/v1")
+    monkeypatch.setenv("DEMO_API_KEY", "secret-value")
+
+    config = ProviderConfig(
+        name="demo",
+        capability="llm",
+        protocol="openai_chat",
+        url="env:DEMO_BASE_URL",
+        api_key="env:DEMO_API_KEY",
+    )
+    assert config.protocol_name() == "openai_chat"
+    assert config.resolved_url() == "https://demo.example.com/v1"
+    assert config.resolved_api_key() == "secret-value"
+    assert config.api_key_source() == "DEMO_API_KEY"
+
+    literal = ProviderConfig(
+        name="demo2",
+        capability="llm",
+        protocol="openai_chat",
+        url="http://127.0.0.1:9880/v1",
+        api_key="sk-pasted-directly",
+    )
+    assert literal.resolved_url() == "http://127.0.0.1:9880/v1"
+    assert literal.resolved_api_key() == "sk-pasted-directly"
+    # The source is never the secret itself, so it is safe to return over the API.
+    assert "sk-pasted-directly" not in literal.api_key_source()
+
+
+def test_provider_legacy_keys_still_work(monkeypatch):
+    """Old provider files (kind/api_key_env/base_url) keep loading unchanged."""
+    from app.core.config_models import ProviderConfig
+
+    monkeypatch.setenv("LEGACY_API_KEY", "legacy-secret")
+    config = ProviderConfig(
+        name="legacy",
+        capability="llm",
+        kind="openai_chat",
+        api_key_env="LEGACY_API_KEY",
+        base_url="https://legacy.example.com/v1",
+    )
+    assert config.protocol_name() == "openai_chat"
+    assert config.resolved_url() == "https://legacy.example.com/v1"
+    assert config.resolved_api_key() == "legacy-secret"

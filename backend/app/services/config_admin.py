@@ -228,14 +228,13 @@ def list_providers(runtime: AppRuntime) -> list[dict[str, Any]]:
                     "name": name,
                     "capability": config.capability,
                     "enabled": config.enabled,
-                    "kind": config.kind,
+                    "protocol": config.protocol_name(),
+                    "url": config.resolved_url(),
                     "models": list(config.models),
-                    "api_key_env": config.api_key_env,
-                    "base_url_env": config.base_url_env,
-                    "has_api_key": bool(config.api_key()),
+                    "api_key": config.api_key_source(),
+                    "has_api_key": bool(config.resolved_api_key()),
                     "timeout_seconds": config.timeout_seconds,
                     "max_concurrency": config.max_concurrency,
-                    "protocol": config.extra.get("protocol"),
                 }
             )
     return providers

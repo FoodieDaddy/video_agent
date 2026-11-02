@@ -6,8 +6,10 @@ Three properties must hold at all times:
    agent's `AgentConfig`; the YAML (or an active DB override) supplies provider, model,
    fallback, parameters, prompt paths and thresholds.
 2. **Secrets live in the environment only.** Provider YAML stores the *name* of the env var
-   (`api_key_env: OPENAI_API_KEY`). `/admin/providers` returns the name and a boolean
-   `has_api_key`, never the value.
+   (`api_key: env:OPENAI_API_KEY`). `/admin/providers` returns that name and a boolean
+   `has_api_key`, never the value. A literal key (`api_key: <secret>`) is honoured for a
+   throwaway local setup, but `api_key: env:NAME` is what ships — and the test suite rejects
+   a literal in any committed provider file.
 3. **Every run is attributable.** `agent_runs` / `tasks` / `workflow_runs` freeze the
    `config_version` (checksum of the effective config) used for that execution.
 
@@ -35,28 +37,42 @@ Provider-level parameters describe the **service**; agent-level parameters descr
 
 | Provider YAML (`config/providers/<bucket>.yaml`) | Agent YAML (`config/agents/<id>.yaml`) |
 | --- | --- |
-| `kind` (adapter), `enabled`, `models[]` | `model.provider`, `model.model_id`, `model.capability` |
-| `api_key_env`, `base_url_env`, `endpoint_env` | `model.fallback_provider`, `model.fallback_model_id` |
+| `protocol` (adapter), `enabled`, `models[]` | `model.provider`, `model.model_id`, `model.capability` |
+| `url`, `api_key` (literal or `env:NAME`), `endpoint` | `model.fallback_provider`, `model.fallback_model_id` |
 | `timeout_seconds`, `max_concurrency` | `generation.timeout_seconds`, `generation.max_retries` |
-| `extra.protocol`, `extra.submit_path` / `status_path` / `cancel_path`, poll limits | `generation.temperature`, `top_p`, `seed`, `max_output_tokens` |
+| `extra.submit_path` / `status_path` / `cancel_path`, poll limits | `generation.temperature`, `top_p`, `seed`, `max_output_tokens` |
+| `extra.request_fields` / `request_defaults` (extra submit fields) | `structured_output.*`, `prompt.*`, `runtime.*`, `evaluation.*` |
 | `extra.input_cost_per_1k`, `output_cost_per_1k`, `unit_cost` | `structured_output.*`, `prompt.*`, `runtime.*`, `evaluation.*` |
 | `extra.supported_params`, `max_tokens_field` | `model.provider_options` (pass-through) |
 
+```yaml
+providers:
+  openai_compatible:            # 供应商标识，agent 的 model.provider 引用它
+    enabled: true
+    protocol: openai_chat       # mock | openai_chat | openai_images | openai_speech | openai_videos | http_task | local_worker
+    url: https://api.deepseek.com/v1   # 也可以是 env:SOME_VAR
+    api_key: env:DEEPSEEK_API_KEY      # 也可以直接粘贴密钥（仅限本机自用）
+    models: [deepseek-chat]     # 智能体 model_id 填这里列出的模型名
+```
+
+The legacy `kind` / `api_key_env` / `base_url_env` / `base_url` / `endpoint_env` spelling is
+still parsed, so an older provider file keeps working after an upgrade.
+
 ## 3. Provider buckets and adapters
 
-| Bucket file | `kind` values implemented | Notes |
+| Bucket file | `protocol` values implemented | Notes |
 | --- | --- | --- |
 | `llm.yaml` | `mock`, `openai_chat` | OpenAI-compatible chat completions; works with vLLM/Azure/DashScope compatible mode |
 | `vision.yaml` | `mock`, `openai_chat` | image + text messages, same wire format |
 | `image.yaml` | `mock`, `openai_images` | `POST /images/generations` |
-| `video.yaml` | `mock`, `http_task`, `local_worker` | submit → poll → download contract, per-vendor paths from `extra` |
+| `video.yaml` | `mock`, `openai_videos`, `http_task`, `local_worker` | `openai_videos` = OpenAI-style `/v1/videos` submit → poll → `/content` download; `http_task` = same flow but the file comes from a `video_url` in the status body |
 | `audio.yaml` | `mock`, `openai_speech` | `POST /audio/speech`, voice from agent options |
 
-`providers/registry.py` maps YAML `kind`/`extra.protocol` to an implementation and resolves
-credentials at construction time. A disabled provider or an unset key env var raises
-`ProviderUnavailableError`; an unknown provider, a model/protocol mismatch or an unsupported
-generation parameter raises `ConfigurationError` — always before the first call, never halfway
-through a paid stage. `extra.supported_params` is enforced: declaring `temperature` unsupported
+`providers/registry.py` maps YAML `protocol` (or the legacy `kind` / `extra.protocol`) to an
+implementation and resolves credentials at construction time. A disabled provider or a missing
+API key raises `ProviderUnavailableError`; an unknown provider, a model/protocol mismatch or an
+unsupported generation parameter raises `ConfigurationError` — always before the first call,
+never halfway through a paid stage. `extra.supported_params` is enforced: declaring `temperature` unsupported
 makes an agent that sets it fail fast instead of silently ignoring the value.
 
 ### Cost accounting
@@ -131,6 +147,52 @@ model:
 
 Rollback is symmetric: `DELETE /admin/model-configs/{agent}/override` returns the agent to
 its YAML definition.
+
+### Example: two local services (text + video)
+
+The shipped YAML points the twelve text agents at a local vLLM and the video agent at a local
+MiniMax-H3 service; the two vendors never have to match. Both keys live in `.env`:
+
+```ini
+QWEN_API_KEY=qwen3.8
+MINIMAX_API_KEY=minimax
+```
+
+```yaml
+# config/providers/llm.yaml
+  qwen:
+    enabled: true
+    protocol: openai_chat
+    url: http://127.0.0.1:8000/v1
+    api_key: env:QWEN_API_KEY
+    models: [qwen3.8-27b]
+    extra:
+      request_defaults: { reasoning_effort: medium }   # 该网关不带这个字段会 400
+
+# config/providers/video.yaml
+  minimax:
+    enabled: true
+    protocol: openai_videos
+    url: http://127.0.0.1:8090/v1
+    api_key: env:MINIMAX_API_KEY
+    models: [minimax-h3]
+    extra:
+      content_suffix: /content          # GET /v1/videos/{id}/content 取 mp4
+      max_duration_seconds: 14          # 服务上限 14.375s，超出先截断
+      request_defaults: { steps: 8, seed: 42 }
+```
+
+`extra.request_defaults` is merged into every submit payload, so vendor-only knobs (thinking
+effort, `steps`, or a smaller `width`/`height` when VRAM is tight) never need code changes.
+`extra.request_fields` narrows which request values are sent (default `prompt`,
+`duration_seconds`, `width`, `height`).
+
+Reasoning models may narrate before answering and then close the trace with `</think>`; the
+adapter extracts the JSON object from the tail instead of failing on the prose. The parser
+prefers the outermost object, so nested payloads still round-trip.
+
+Tests never touch these services: the `settings` fixture exports
+`AGENT_MODEL_PROVIDER=mock`, so no test can reach a live endpoint.
 
 ## 6. Config versions (admin workflow)
 

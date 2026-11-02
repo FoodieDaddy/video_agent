@@ -1,8 +1,11 @@
-# Audio providers (text-to-speech for dialogue / narration).
+# 语音合成供应商（对白配音、旁白）。
+#
+# 字段说明见 llm.yaml 顶部：enabled / protocol / url / api_key / models。
+# 音色在智能体文件 config/agents/audio_voice.yaml 的 model.provider_options.voice 里设置。
 providers:
   mock:
     enabled: true
-    kind: mock
+    protocol: mock
     timeout_seconds: 120
     max_concurrency: 4
     models:
@@ -10,27 +13,25 @@ providers:
 
   openai:
     enabled: false
-    kind: openai_speech
-    api_key_env: OPENAI_API_KEY
-    base_url_env: OPENAI_BASE_URL
-    base_url: https://api.openai.com/v1
+    protocol: openai_speech
+    url: https://api.openai.com/v1
+    api_key: env:OPENAI_API_KEY
     models:
       - gpt-4o-mini-tts
       - tts-1
     timeout_seconds: 180
     max_concurrency: 2
     extra:
-      protocol: openai_speech
       unit_cost: 0.015
 
+  # 本地 TTS 服务（CosyVoice、GPT-SoVITS 等，需提供 OpenAI 兼容的 /audio/speech）。
+  # url 直接写成 http://127.0.0.1:9880/v1 也可以。
   local_tts:
     enabled: false
-    kind: openai_speech
-    api_key_env: LOCAL_TTS_API_KEY
-    base_url_env: LOCAL_TTS_BASE_URL
+    protocol: openai_speech
+    url: env:LOCAL_TTS_BASE_URL
+    api_key: env:LOCAL_TTS_API_KEY
     models:
       - cosyvoice
     timeout_seconds: 120
     max_concurrency: 2
-    extra:
-      protocol: openai_speech

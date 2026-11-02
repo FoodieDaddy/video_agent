@@ -12,6 +12,7 @@ living documentation of the service layer.
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -29,6 +30,8 @@ from app.services.runtime import build_runtime  # noqa: E402
 
 async def main() -> int:
     data_dir = Path(tempfile.mkdtemp(prefix="studio_smoke_"))
+    # This run is offline by definition: never reach a configured real provider.
+    os.environ.setdefault("AGENT_MODEL_PROVIDER", "mock")
     settings = load_settings(data_dir=data_dir)
     init_engine(settings)
     init_schema()

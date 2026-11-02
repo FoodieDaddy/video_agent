@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 调用视频生成模型为单个镜头生成视频候选，支持同步与提交-轮询两种协议。
 model:
-  provider: mock
-  model_id: mock-video
+  provider: minimax
+  model_id: minimax-h3
   capability: video_generation
-  fallback_provider: mock
-  fallback_model_id: mock-video
+  fallback_provider: minimax
+  fallback_model_id: minimax-h3
   provider_options:
     aspect_ratio: "16:9"
 generation:

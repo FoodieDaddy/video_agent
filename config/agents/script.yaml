@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 将小说章节解析为结构化剧本：章节摘要、故事事件、人物台词、主旨与基调。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.3

@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 从剧本与原文中识别人物及其关系，输出带证据的人物候选列表。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.2

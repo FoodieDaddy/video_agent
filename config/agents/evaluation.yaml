@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 按阶段评估成片质量（故事、人物、场景一致性、动作、画面、音频），给出接受/重生成建议。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.2

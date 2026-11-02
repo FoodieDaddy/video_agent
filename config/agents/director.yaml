@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 根据已批准剧本制定导演规划：视觉风格、镜头策略、连续性规则。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.5

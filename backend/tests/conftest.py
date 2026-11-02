@@ -20,6 +20,9 @@ def settings(tmp_path, monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(data_dir / 'studio.db').as_posix()}")
     monkeypatch.setenv("STORAGE_ROOT", str(data_dir / "storage"))
+    # The shipped agent YAML points at real providers (a local vLLM / video
+    # service); tests must never depend on those being up.
+    monkeypatch.setenv("AGENT_MODEL_PROVIDER", "mock")
 
     from app.core.settings import get_settings, load_settings
 

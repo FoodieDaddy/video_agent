@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 从剧本与章节文本中提取场景，记录时间、环境、建筑与氛围证据。
 model:
-  provider: mock
-  model_id: mock-llm
+  provider: qwen
+  model_id: qwen3.8-27b
   capability: text_reasoning
-  fallback_provider: mock
-  fallback_model_id: mock-llm
+  fallback_provider: qwen
+  fallback_model_id: qwen3.8-27b
   provider_options: {}
 generation:
   temperature: 0.2

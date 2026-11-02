@@ -1,12 +1,14 @@
-# Video providers.
+# 视频生成供应商。
 #
-# The `http_task` protocol is a documented submit -> poll -> download contract
-# (see backend/app/providers/openai_compat.py::HttpTaskVideoProvider), so a new
-# vendor only needs a thin adapter, not a new agent.
+# 字段说明见 llm.yaml 顶部：enabled / protocol / url / api_key / models。
+# 这里的 protocol 有三种：
+#   openai_videos : 本机/网关的 OpenAI 风格视频服务（提交 -> 轮询 -> /content 下载）
+#   http_task     : 通用「提交任务 -> 轮询 -> 下载 video_url」协议，对接托管视频 API
+#   local_worker  : 本机/内网 ComfyUI、WAN 等异步任务服务
 providers:
   mock:
     enabled: true
-    kind: mock
+    protocol: mock
     timeout_seconds: 300
     max_concurrency: 2
     models:
@@ -14,15 +16,14 @@ providers:
 
   local_worker:
     enabled: false
-    kind: local_worker
-    base_url_env: LOCAL_VIDEO_BASE_URL
-    endpoint_env: LOCAL_VIDEO_ENDPOINT
+    protocol: local_worker
+    url: env:LOCAL_VIDEO_BASE_URL
+    # 本机服务一般不需要密钥；需要鉴权时再加一行：api_key: env:LOCAL_VIDEO_API_KEY
     models:
       - wan2.1-t2v
     timeout_seconds: 1800
     max_concurrency: 1
     extra:
-      protocol: local_worker
       submit_path: /jobs
       status_path: /jobs
       cancel_path: /jobs
@@ -32,18 +33,46 @@ providers:
 
   hosted:
     enabled: false
-    kind: http_task
-    api_key_env: VIDEO_API_KEY
-    base_url_env: VIDEO_BASE_URL
+    protocol: http_task
+    url: env:VIDEO_BASE_URL
+    api_key: env:VIDEO_API_KEY
     models:
       - vendor-video-v1
     timeout_seconds: 900
     max_concurrency: 2
     extra:
-      protocol: http_task
       submit_path: /videos
       status_path: /videos
       cancel_path: /videos
       poll_interval_seconds: 5
       max_wait_seconds: 900
       unit_cost: 0.05
+
+  # 本机 MiniMax-H3 视频服务（http://127.0.0.1:8090/v1）。
+  # 接口形状：POST /v1/videos 提交 -> GET /v1/videos/{id} 轮询状态
+  #          -> GET /v1/videos/{id}/content 取 mp4。
+  # 密钥写在 .env 的 MINIMAX_API_KEY 里（本机服务填任意字符串即可）。
+  minimax:
+    enabled: true
+    protocol: openai_videos
+    url: http://127.0.0.1:8090/v1
+    api_key: env:MINIMAX_API_KEY
+    models:
+      - minimax-h3
+    timeout_seconds: 300
+    max_concurrency: 1
+    extra:
+      submit_path: /videos
+      status_path: /videos
+      cancel_path: /videos
+      content_suffix: /content
+      poll_interval_seconds: 5
+      max_wait_seconds: 1800
+      # 该服务单条最长 14.375 秒，超出会被拒绝，这里先截断再提交
+      max_duration_seconds: 14
+      unit_cost: 0.0
+      # 每次提交都附带的参数：steps 越大越慢越精细；显存吃紧时可加
+      # width/height 覆盖（例如 width: 848, height: 480）。
+      request_defaults:
+        steps: 8
+        seed: 42
