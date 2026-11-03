@@ -1,3 +1,9 @@
+# 剧本解析智能体：小说章节 -> 结构化剧本（章节摘要 / 事件 / 台词）。
+#
+# 改完本文件想验证（模块 2 自检，会真实调用一次模型）：
+#   .\.venv\Scripts\python.exe scripts\checks\module2_script_agent.py
+# 本机 qwen 约 7 token/s：max_output_tokens=8192 意味着一次最大输出要 ~19 分钟，
+# 而 timeout_seconds=180 只够 ~1200 个 token。调慢超时前先把 max_output_tokens 调小。
 agent:
   id: script
   name: Script Agent

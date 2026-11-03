@@ -89,6 +89,8 @@ def _provider_options(config_store: ConfigStore, config: ProviderConfig, model: 
         "ffmpeg_bin": getattr(settings, "ffmpeg_bin", None) or os.getenv("FFMPEG_BIN", "ffmpeg"),
         "ffprobe_bin": getattr(settings, "ffprobe_bin", None) or os.getenv("FFPROBE_BIN", "ffprobe"),
     }
+    # 模块 1：合并顺序 = 基础字段 -> 供应商 extra -> 模型级 provider_options（后者覆盖前者）。
+    # 智能体的 generation 字段不在这里，由各 provider 内部拼进请求体。
     options.update(config.extra or {})
     endpoint = config.resolved_endpoint()
     if endpoint:

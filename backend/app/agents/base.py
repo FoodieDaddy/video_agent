@@ -187,6 +187,14 @@ class StructuredLLMAgent(BaseAgent):
             self.config, variables
         )
         response_schema = output_model.model_json_schema()
+        # 模块 2 关键点：把输出 schema 写进 system prompt。
+        # 多数兼容 OpenAI 的本地服务只实现了 response_format=json_object（不校验字段名），
+        # 模型看不到 schema 就会自己发明字段（例如 dialogues 里写 speaker 而不是
+        # character_name），校验必然失败，还白白消耗重试/修复额度。
+        system_prompt = (
+            f"{system_prompt}\n\n[输出 JSON Schema：字段名与类型必须完全一致]\n"
+            + json.dumps(response_schema, ensure_ascii=False, separators=(",", ":"))
+        )
 
         candidates: list[ModelRef] = [self.config.model]
         fallback = self.config.model.fallback
@@ -276,6 +284,11 @@ class StructuredLLMAgent(BaseAgent):
                 except (ValidationError, ValueError) as exc:
                     failures.append(f"schema validation failed: {exc}")
                     model_used = candidate
+                    # 模块 2 关键点：这里决定"模型胡输出"会怎样收场。
+                    # attempts 统计真实 HTTP 调用次数；repair 只在既有重试额度
+                    # （max_retries）又还有 repair_attempts 时触发，且会把校验错误
+                    # 追加进 user prompt。额度用尽就抛 AgentSchemaError（带 details），
+                    # 绝不让不合契约的数据流给下游智能体。
                     if repair_used < repair_attempts and attempt < max_attempts:
                         repair_used += 1
                         current_user_prompt = (

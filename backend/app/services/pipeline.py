@@ -394,6 +394,9 @@ async def generate_script(
     if not chapters:
         raise WorkflowError("请先上传并解析小说文本，再进行剧本解析")
 
+    # 模块 2 关键点：输入是"章节 dict 列表"（不是原始长文本），输出必须满足
+    # ScriptOutput；下面把整份 JSON 存进 Script.content，再把 events 逐条展开成
+    # StoryEvent —— 后续人物/场景提取读的是 StoryEvent，不是剧本正文。
     result = await run_agent(
         db,
         runtime,

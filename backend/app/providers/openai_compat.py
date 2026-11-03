@@ -162,6 +162,8 @@ class OpenAICompatibleLLMProvider(_HttpProviderMixin, LLMProvider):
             payload[max_tokens_field] = generation.max_output_tokens
         if request.response_schema:
             payload["response_format"] = {"type": "json_object"}
+        # 模块 1 关键点：供应商 YAML 里的 extra.request_defaults 在最后合并，
+        # 所以 reasoning_effort（本机 vLLM 必填）这类网关参数会覆盖上面生成的字段。
         payload.update(self.options.get("request_defaults") or {})
 
         started = time.perf_counter()

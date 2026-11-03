@@ -11,6 +11,9 @@
 #     url 写 https://api.deepseek.com/v1，api_key 写 env:DEEPSEEK_API_KEY，
 #     再在 .env 里加 DEEPSEEK_API_KEY=你的密钥，最后在智能体文件里把
 #     model.provider 改成 openai_compatible、model.model_id 改成 deepseek-chat。
+#
+# 改完想验证本文件是否生效（模块 1 自检，含一次真实调用）：
+#   .\.venv\Scripts\python.exe scripts\checks\module1_config_llm.py
 providers:
   mock:
     enabled: true
@@ -70,6 +73,11 @@ providers:
       # “Unexpected reasoning effort None”；可选 xhigh（默认，最慢）/ medium / low。
       request_defaults:
         reasoning_effort: medium
+        # 本机 qwen3 默认会先"思考"上千 token 再输出 JSON（实测 8192 tokens
+        # 上限 + 300s 超时永远跑不完，只剩半截思考文本）。关掉思考后同一
+        # 提示词 96s / 882 tokens 就返回干净 JSON。云端模型请删掉这段。
+        chat_template_kwargs:
+          enable_thinking: false
       # 本机模型不计费
       input_cost_per_1k: 0.0
       output_cost_per_1k: 0.0
