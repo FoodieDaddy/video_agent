@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import os
-import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
 
 from app.core.constants import ReviewStatus  # noqa: E402
 from app.core.settings import load_settings  # noqa: E402
@@ -29,7 +27,7 @@ from app.services.runtime import build_runtime  # noqa: E402
 
 
 async def main() -> int:
-    from app.bootstrap.composition import configure_application
+    from studio_api.bootstrap.composition import configure_application
 
     configure_application()
     data_dir = Path(tempfile.mkdtemp(prefix="studio_smoke_"))

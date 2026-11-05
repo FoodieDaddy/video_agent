@@ -84,7 +84,7 @@ ffprobe -version
 | 参数 | 说明 |
 | --- | --- |
 | `--dir <路径>` | 换安装目录 |
-| `--port <端口>` | 换 HTTP 端口（默认 8010，被占用时自动往后找空闲端口） |
+| `--port <端口>` | 显式选择 HTTP 端口；默认 8010，占用时报错并要求先处理已有实例 |
 | `--extras s3,pdf` | 额外安装可选依赖（可选值见 `pyproject.toml` 的 `optional-dependencies`） |
 | `--python <路径>` | 指定用哪个 Python 建虚拟环境 |
 | `--with-ffmpeg` | 尝试用 `winget` 安装 FFmpeg |
@@ -93,26 +93,25 @@ ffprobe -version
 | `--dry-run` | 只打印计划，不改动任何东西 |
 
 - 装到非默认目录后，卸载时也要带同样的 `--dir <路径>`。
-- 失败信息会留在窗口里（`Press Enter to close`）；先排查网络与代理（pip 走 `PIP_INDEX_URL`），再重跑。
-- 安装器只做「Python 环境 + 依赖 + 快捷方式」，FFmpeg 若缺失会在第 7 步给出明确提示。
+- 失败信息会留在窗口里（`Press Enter to close`）；应用依赖使用载荷内 `uv.lock` 冻结同步，uv 引导由 pip 获取，应用包由 uv 获取；网络代理与索引设置需要同时适用于两者。
+- 安装器验证完整 workspace，复制所有成员后再安装，启动器通过已安装包运行。FFmpeg 若缺失会在第 7 步给出明确提示。
 
 ### 2.3 首次安装（源码方式）
 
 ```powershell
 cd C:\Users\liumiao\Desktop\video_make\video_agent
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1          # 若被策略拦截：Set-ExecutionPolicy -Scope Process Bypass
-pip install -e ".[dev]"
+python -m pip install uv==0.12.9
+uv sync --frozen --extra dev
 Copy-Item .env.example .env           # 可选，.env 会被自动读取；不要提交进仓库
 ```
 
 ### 2.4 启动与停止
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8010
+.\.venv\Scripts\python.exe -m uvicorn studio_api.main:app --host 127.0.0.1 --port 8010 --workers 1
 ```
 
-也可以用它自带的桌面启动器：自动挑一个空闲端口，等 `/health` 通了再打开浏览器：
+也可以用桌面启动器：启动前先确认没有已有项目实例，等 `/health` 通了再打开浏览器：
 
 ```powershell
 .\.venv\Scripts\python.exe backend\app\desktop.py --port 8010
@@ -676,7 +675,7 @@ Docker 方式：`docker compose stop` → 复制卷 `ai-film-studio_studio-data`
 
 ```powershell
 git pull
-pip install -e ".[dev]"
+uv sync --frozen --extra dev
 python scripts/export_schemas.py     # 配置 schema 变更时，让 config/schemas 与代码一致
 python -m pytest                     # 可选，升级前自检
 ```
@@ -703,7 +702,7 @@ python -m pytest                     # 可选，升级前自检
 | 剪辑状态保留但无成片，错误「FFmpeg 不可用…」 | 找不到 ffmpeg | 安装 FFmpeg 或设 `FFMPEG_BIN`，重启后重新「合成成片」 |
 | 上传报「文件超过 20MB 上限」 | 超过硬限制 | 拆分或压缩文本；PDF/超大文件请先转成 txt |
 | 上传报「无法从文档中切分出章节」 | 没有章节标题 | 在文本中补「第一章 …」这类标题后重传 |
-| 上传 docx 报需要 `python-docx` | 依赖缺失 | `pip install -e .` 重新安装依赖 |
+| 上传 docx 报需要 `python-docx` | 依赖缺失 | `uv sync --frozen` 重新同步锁定依赖 |
 | 「该审核已经处理」 | 审核已通过/驳回 | 驳回后按 5.3 重新提审，不要再重复提交同一 review |
 | 事件流长时间无输出后结束 | SSE 默认 900 秒超时 | 任务仍在跑；刷新页面或重新订阅事件流即可 |
 | 页面一直「离线」 | 服务未启动或端口不对 | 确认 `uvicorn` 进程与端口，检查 `/health` |

@@ -59,14 +59,13 @@ from pathlib import Path
 
 # 让脚本既能直接运行，也能被 pytest / 其他脚本 import。
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
 
-from app.modules.ai_runtime.providers import registry  # noqa: E402
-from app.modules.ai_runtime.providers.base import LLMProvider, LLMRequest  # noqa: E402
-from app.modules.ai_runtime.providers.openai_compat import _extract_json  # noqa: E402
-from app.modules.platform.configuration.config_models import GenerationConfig  # noqa: E402
-from app.modules.platform.configuration.config_store import ConfigStore  # noqa: E402
-from app.modules.platform.configuration.settings import Settings, load_settings  # noqa: E402
+from studio_ai_runtime.providers import registry  # noqa: E402
+from studio_ai_runtime.providers.base import LLMProvider, LLMRequest  # noqa: E402
+from studio_ai_runtime.providers.openai_compat import _extract_json  # noqa: E402
+from studio_platform.configuration.config_models import GenerationConfig  # noqa: E402
+from studio_platform.configuration.config_store import ConfigStore  # noqa: E402
+from studio_platform.configuration.settings import Settings, load_settings  # noqa: E402
 
 # 智能体 YAML 里的 model.capability 只是文档字段；真正决定"去哪个供应商文件里找"
 # 的是下面这张能力->文件(stem)的对应表（llm.yaml / vision.yaml / image.yaml ...）。

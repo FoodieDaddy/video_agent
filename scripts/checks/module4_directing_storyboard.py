@@ -27,7 +27,6 @@ from typing import Any
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from module2_script_agent import Redactor, SafeStream, _cleanup, build_sandbox, no_network  # noqa: E402
@@ -44,29 +43,31 @@ from app.models.production import (  # noqa: E402
 )
 from app.models.project import Asset  # noqa: E402
 from app.models.scene import Scene, SceneAsset, SceneProfile  # noqa: E402
-from app.modules.ai_runtime.base import AgentContext  # noqa: E402
-from app.modules.ai_runtime.providers import registry as provider_registry  # noqa: E402
-from app.modules.ai_runtime.providers.base import LLMResult  # noqa: E402
-from app.modules.ai_runtime.registry import create_agent  # noqa: E402
-from app.modules.platform.configuration.config_models import ModelRef, ProviderConfig  # noqa: E402
-from app.modules.platform.configuration.config_store import stable_checksum  # noqa: E402
-from app.modules.platform.exceptions import (  # noqa: E402
+from studio_ai_runtime.base import AgentContext  # noqa: E402
+from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
+from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
+from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_platform.configuration.config_models import ModelRef, ProviderConfig  # noqa: E402
+from studio_platform.configuration.config_store import stable_checksum  # noqa: E402
+from studio_platform.exceptions import (  # noqa: E402
     AgentSchemaError,
     ConflictError,
     PermissionDeniedError,
     WorkflowError,
 )
-from app.modules.platform.execution.runtime import build_runtime  # noqa: E402
-from app.modules.platform.execution.task_runner import reset_runner  # noqa: E402
-from app.modules.platform.persistence.session import reset_engine, session_scope  # noqa: E402
-from app.modules.production import public as production  # noqa: E402
-from app.modules.production.application import use_cases as production_cases  # noqa: E402
-from app.modules.projects import public as projects  # noqa: E402
-from app.modules.reviews import public as reviews  # noqa: E402
-from app.modules.story import public as story  # noqa: E402
-from app.modules.workflow import public as workflow  # noqa: E402
-from app.schemas.director import DirectingPlanInput  # noqa: E402
-from app.schemas.storyboard import StoryboardInput  # noqa: E402
+from studio_platform.execution.runtime import build_runtime  # noqa: E402
+from studio_platform.execution.task_runner import reset_runner  # noqa: E402
+from studio_platform.persistence.session import reset_engine, session_scope  # noqa: E402
+from studio_production import public as production  # noqa: E402
+from studio_production.application import use_cases as production_cases  # noqa: E402
+from studio_production.contracts import (  # noqa: E402
+    DirectingPlanInput,  # noqa: E402
+    StoryboardInput,  # noqa: E402
+)
+from studio_projects import public as projects  # noqa: E402
+from studio_reviews import public as reviews  # noqa: E402
+from studio_story import public as story  # noqa: E402
+from studio_workflow import public as workflow  # noqa: E402
 
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 TARGETS = ("director", "storyboard")

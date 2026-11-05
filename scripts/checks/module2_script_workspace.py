@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from module2_script_agent import (  # noqa: E402
@@ -33,11 +32,11 @@ from module2_script_agent import (  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
 from app.models.ops import AgentRun, ModelCallLog  # noqa: E402
-from app.modules.platform.exceptions import ConflictError, NotFoundError, ValidationAppError  # noqa: E402
-from app.modules.platform.execution.task_runner import reset_runner  # noqa: E402
-from app.modules.platform.persistence.session import reset_engine, session_scope  # noqa: E402
-from app.modules.projects import public as projects  # noqa: E402
-from app.modules.story import public as story  # noqa: E402
+from studio_platform.exceptions import ConflictError, NotFoundError, ValidationAppError  # noqa: E402
+from studio_platform.execution.task_runner import reset_runner  # noqa: E402
+from studio_platform.persistence.session import reset_engine, session_scope  # noqa: E402
+from studio_projects import public as projects  # noqa: E402
+from studio_story import public as story  # noqa: E402
 
 GROUPS = (
     "sandbox",

@@ -33,9 +33,7 @@ UNINSTALL_REGISTRY = rf"Software\Microsoft\Windows\CurrentVersion\Uninstall\{APP
 
 MIN_PYTHON = (3, 11)
 PYTHON_VERSION = "3.12.10"
-PYTHON_DOWNLOAD = (
-    "https://www.python.org/ftp/python/{version}/python-{version}-{arch}.exe"
-)
+PYTHON_DOWNLOAD = "https://www.python.org/ftp/python/{version}/python-{version}-{arch}.exe"
 
 # Never copied into the install directory: build output, local state, VCS data.
 SKIP_NAMES = {
@@ -52,6 +50,7 @@ SKIP_NAMES = {
     ".ruff_cache",
     ".mypy_cache",
     "node_modules",
+    "backend",  # 仓库级旧入口链接与测试不参与安装；已安装 app 兼容包由 studio-api 提供。
 }
 SKIP_SUFFIXES = {".pyc", ".pyo", ".log", ".db", ".sqlite3", ".egg-info"}
 
@@ -105,24 +104,66 @@ def payload_root(explicit: str | None = None) -> Path:
     """Application source that will be copied into the install directory."""
     if explicit:
         path = Path(explicit).expanduser().resolve()
-        if not (path / "backend" / "app" / "main.py").is_file():
-            raise InstallerError(f"--from {path} does not look like the studio source tree")
+        validate_payload(path)
         return path
 
     bundled = resource_root()
     if bundled is not None:
         candidate = bundled / "payload"
-        if (candidate / "backend" / "app" / "main.py").is_file():
+        if (candidate / "apps" / "studio_api" / "src" / "studio_api" / "main.py").is_file():
+            validate_payload(candidate)
             return candidate
 
     # Running from a checkout: installer/ lives directly below the repo root.
     checkout = Path(__file__).resolve().parents[1]
-    if (checkout / "backend" / "app" / "main.py").is_file():
+    if (checkout / "apps" / "studio_api" / "src" / "studio_api" / "main.py").is_file():
+        validate_payload(checkout)
         return checkout
     raise InstallerError(
         "Cannot find the application files. Run install.exe from the release folder "
         "or pass --from <path-to-source>."
     )
+
+
+def validate_payload(path: Path) -> list[Path]:
+    """验证完整 workspace 与共享资源；不执行安装或解析本地凭据。"""
+    required = (
+        "pyproject.toml",
+        "uv.lock",
+        "apps/studio_api/src/studio_api/main.py",
+        "config/app.yaml",
+        "web/index.html",
+        "samples/novel_sample.txt",
+        "scripts/sync_studio_resources.py",
+    )
+    missing = [name for name in required if not (path / name).is_file()]
+    if missing:
+        raise InstallerError(f"Workspace payload is incomplete: {', '.join(missing)}")
+    workspace = read_toml(path / "pyproject.toml").get("tool", {}).get("uv", {}).get("workspace", {})
+    patterns = workspace.get("members", [])
+    if not patterns:
+        raise InstallerError("Workspace payload has no declared members")
+    excluded = {
+        candidate.resolve() for pattern in workspace.get("exclude", []) for candidate in path.glob(pattern)
+    }
+    members = sorted(
+        {
+            candidate
+            for pattern in patterns
+            for candidate in path.glob(pattern)
+            if candidate.is_dir() and candidate.resolve() not in excluded
+        }
+    )
+    if not members:
+        raise InstallerError("Workspace payload member patterns match no projects")
+    for member in members:
+        if not (member / "pyproject.toml").is_file() or not (member / "src").is_dir():
+            raise InstallerError(f"Workspace member is incomplete: {member.relative_to(path)}")
+        name = read_toml(member / "pyproject.toml").get("project", {}).get("name", "")
+        module_name = name.replace("-", "_")
+        if not name or not (member / "src" / module_name / "__init__.py").is_file():
+            raise InstallerError(f"Workspace member source is missing: {member.relative_to(path)}")
+    return members
 
 
 def asset(name: str) -> Path | None:
@@ -578,8 +619,7 @@ def ffmpeg_available() -> bool:
     if shutil.which("ffmpeg"):
         return True
     return any(
-        Path(candidate).is_file()
-        for candidate in ("C:/ffmpeg/bin/ffmpeg.exe", "D:/ffmpeg/bin/ffmpeg.exe")
+        Path(candidate).is_file() for candidate in ("C:/ffmpeg/bin/ffmpeg.exe", "D:/ffmpeg/bin/ffmpeg.exe")
     )
 
 

@@ -1,16 +1,16 @@
 # AI Film Studio 多模块化改动说明
 
-- 状态：实施中，逻辑模块化、工作流定义快照、业务 ORM 模块归属和 production/media 拆分已落地；story 到 workflow/reviews 的首个 DTO 边界已建立，其他仓储/DTO 解耦和 workspace 待实施
-- 日期：2026 年 11 月 4 日
+- 状态：核心结构已迁入 13 成员 uv workspace；业务归属、主要 DTO 和 production/media 拆分已落地；显式 legacy 接口及 Docker/Windows 交付验证仍有待验项
+- 更新日期：2026 年 11 月 5 日（初稿为 11 月 4 日）
 - 适用项目：video_agent
 
-采用接近 Java 多 module 的模块化单体结构：先以业务模块组织代码，在模块内部统一分层；需要独立的包管理和构建边界时，再引入 uv workspace。各模块共同组成一个应用，继续保持单实例启动约定。
+当前采用业务优先的模块化单体和同仓多包 uv workspace。`apps/studio_api` 与 12 个 `packages/studio_*` 成员共享锁文件和依赖解，每个包使用 src 布局并声明直接依赖。各成员共同组成一个应用，继续保持单实例启动约定。
 
-首批逻辑分包、公开入口与兼容接线已实施，当前落点和验收见[重构进度](refactoring-progress.md)。下述 apps/packages workspace 仍是后续目标；仓储、DTO 和业务 ORM 归属也需继续分批完善。
+当前目录和验收见[重构进度](refactoring-progress.md)与[架构说明](overview.md)。`backend/app` 现为指向应用包中旧 app 兼容目录的符号链接；主要实现位于 canonical `studio_*` 包。完整仓储/DTO 解耦仍有显式 legacy 返回适配，旧导入入口继续保留。
 
 ## 1 改动目标与适用范围
 
-当前代码以技术职责划分 `api`、`services`、`agents`、`schemas`、`models`、`providers` 等目录。Agent 和模型适配已有独立实现，但 `services/pipeline.py` 同时承载剧本、人物、场景、导演、分镜等业务，多个 API、工作流和检查脚本直接依赖它。修改一项业务时，通常需要在多个技术目录中定位相关代码。
+重构前代码以 `api`、`services`、`agents`、`schemas`、`models`、`providers` 等技术职责划分目录，`services/pipeline.py` 混合多项业务。本方案的实施已将业务用例、Agent、Schema 和 ORM 归入对应包；原路径保留薄兼容入口。
 
 本方案将业务 module 作为一级边界，使开发者能够在对应模块内找到公开入口、用例、规则、数据访问和测试。相较此前讨论的全局四层目录，目录组织重心改为业务优先，职责分层原则继续保留。
 
@@ -78,9 +78,9 @@
 
 Orchestrator 当前提供计划输出，生产流程仍由 YAML 驱动。场景参考图、完整服装与状态管理、音乐音效等任务书目标，按各自实际实现和验收状态管理，不能仅凭目录或角色已经存在认定完成。
 
-## 3 目标目录与模块内部结构
+## 3 当前 workspace 目录与模块内部结构
 
-最终工程管理形式可以采用同仓多包 workspace。以下是目标示意，目录尚未创建：
+当前已建立以下同仓多包 workspace。源码通过成员安装后导入，仓库根项目负责统一开发工具与应用依赖：
 
 ```text
 video_agent/
@@ -94,7 +94,9 @@ video_agent/
 │       ├── pyproject.toml
 │       └── src/studio_api/
 │           ├── main.py              应用入口
-│           └── bootstrap.py         依赖组装与资源生命周期
+│           ├── bootstrap/           Agent/Schema/ORM/审核端口装配
+│           ├── resource_root.py     统一资源定位
+│           └── resources/           构建前同步的资源交付副本
 ├── packages/
 │   ├── studio_projects/
 │   ├── studio_story/
@@ -108,6 +110,9 @@ video_agent/
 │   ├── studio_ai_runtime/
 │   ├── studio_platform/
 │   └── studio_contracts/
+├── backend/
+│   ├── app -> ../apps/studio_api/src/app  旧路径兼容链接
+│   └── tests/                       仓库级回归与架构检查
 ├── scripts/checks/                   跨模块验证入口
 └── docs/
 ```
@@ -117,8 +122,8 @@ video_agent/
 ```text
 studio_characters/
 ├── pyproject.toml
-├── README.md
 ├── src/studio_characters/
+│   ├── README.md
 │   ├── public.py                    对其他模块开放的用例和查询
 │   ├── contracts.py                 对外输入输出数据类型
 │   ├── application/                 提取、描述、编辑等用例协调
@@ -126,21 +131,21 @@ studio_characters/
 │   └── infrastructure/
 │       ├── persistence/             人物仓储与 ORM 适配
 │       └── agents/                  人物相关 AI 实现
-└── tests/
+└── （对应回归仍集中在 backend/tests）
 ```
 
 模块较小时可以先使用少量文件，不为形式创建空目录。公开用例变多后，再将 `public.py` 拆为公开 API 包。
 
 uv workspace 中，每个成员有自己的 `pyproject.toml`，共同使用一个锁文件和兼容的依赖解；它不会给每个模块自动创建独立环境，也不自动提供部署或导入安全隔离。[uv workspace 机制与限制](https://docs.astral.sh/uv/concepts/projects/workspaces/)
 
-`src` 布局用于区分可安装的代码与仓库工具、文档等文件，开发和测试通过安装后的包导入，逐步减少临时修改 `sys.path` 的做法。[Python 包布局说明](https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/)
+`src` 布局用于区分可安装的代码与仓库工具、文档等文件，开发和测试通过 `uv sync --frozen --extra dev` 安装的成员包导入；标准启动、质量门禁和检查脚本不再注入 backend 路径。[Python 包布局说明](https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/)
 
 ## 4 依赖与数据所有权规则
 
 ### 4.1 公开接口规则
 
 - 跨业务模块只调用公开用例、查询和数据契约，不导入对方的内部仓储、ORM 或私有函数。
-- 公开接口返回 ID、版本引用、DTO 或明确结果，不把数据库 Session 和可变 ORM 对象传遍模块。
+- 新的跨业务读取返回 ID、版本引用、DTO 或明确结果。多数用例仍接受外层 Session 维持既有事务；旧 ORM 返回通过显式兼容接口保留，不能称全量 Session/ORM 解耦。
 - 同一业务规则只保留一个权威实现。兼容入口转发调用，不复制逻辑。
 - `studio_contracts` 仅保存稳定的跨模块协议，不集中所有业务 Schema，也不依赖数据库、HTTP 或业务模块。
 
@@ -184,7 +189,7 @@ Agent 通过自己的输入输出契约返回候选产物与执行证据；资�
 
 旧 `app.services.pipeline`、reviews、Agent、Schema 等导入路径在迁移期间保留兼容门面或重新导出。兼容入口保持原函数名、同步或异步形式、返回类型和异常语义；需要返回 ORM 对象时，在原 Session 中转换，不新增隐式提交或另开事务。
 
-新实现不能再反向调用旧门面。内部调用方逐个迁移后，兼容文件只承担兼容职责；删除旧入口作为单独变更处理。
+canonical 包实现不再反向调用旧 app 门面，主要跨模块输入改用公开 DTO、只读端口和 ID 命令。HTTP 适配与显式 legacy 接口仍有 ORM 返回；兼容文件只承担转发职责，删除旧入口作为单独兼容性变更处理。
 
 ## 6 配置与运行约束
 
@@ -204,13 +209,13 @@ LangGraph、DSH、Pi 保持独立技术选项。后续若接入，位于工作�
 
 ## 7 分阶段迁移与交付
 
-| 阶段 | 改动 | 验收与交付 |
+| 阶段 | 实施结果 | 当前验收边界 |
 | --- | --- | --- |
-| 0 固定基线 | 记录当前工作区、API、配置、数据结构、离线产物与测试结果 | 明确现有未提交改动，避免重构时覆盖或回滚 |
-| 1 逻辑模块化 | 先在现有工程内形成业务包、公开入口和依赖规则 | 应用入口与打包不变，验证模块可独立测试 |
-| 2 分批迁用例 | 按项目基础、story 文档与剧本、人物场景、制作、审核流程的依赖顺序迁移 | 每批保留兼容入口并完成对应回归 |
-| 3 建立多包工程 | 使用 uv workspace 和 src 布局，为稳定模块声明包依赖 | 验证安装、资源定位、Docker 和安装器打包，不打包本地 .env |
-| 4 收束调用关系 | API、任务、工作流、checker 统一走公开接口 | 检查无循环、无越界导入，旧门面保持薄层 |
+| 0 固定基线 | 记录源代码、API、表结构和既有测试；原源码备份与功能分支提交保留 | 历史记录与本次 workspace 验证分别标注 |
+| 1 逻辑模块化 | 业务/技术职责分开，明确 public/contracts 与技术公开入口 | canonical 源码依赖 DAG、领域依赖与旧路径身份进入架构检查 |
+| 2 分批迁用例 | 业务用例、ORM、Schema、Agent 已归属对应包；批准写入由所有者执行 | 主要读取使用 DTO，原 Session 事务和显式 legacy ORM 返回继续兼容 |
+| 3 建立多包工程 | 13 成员 uv workspace、src、独立清单、共享锁文件与资源同步已实施 | 已安装成员回归通过；Docker daemon 不可用、Windows 原生交付未验收 |
+| 4 收束调用关系 | 工作流、任务和主要业务消费者使用公开入口、DTO/ID/端口；检查脚本使用已安装包 | 保留旧导入转发和 HTTP/legacy ORM 适配；逐项收尾不等于已删除兼容层 |
 
 结构迁移保持以下外部契约：
 
@@ -223,6 +228,8 @@ LangGraph、DSH、Pi 保持独立技术选项。后续若接入，位于工作�
 每一批迁移作为可独立验收和回退的变更，不将业务修复、目录移动、打包更换混在同一批。回退以该批源代码和包依赖变更为单位，不恢复或覆盖用户的业务数据库。
 
 ## 8 验收标准与阅读体验
+
+以下标准保留为审查清单，完成状态以实际证据为准。当前 workspace 正式后端回归为 361 项通过；Docker 容器运行和 Windows 原生安装未执行，完整仓储/DTO 解耦也未覆盖所有历史接口。离线机制证据不替代这些交付验证。
 
 ### 8.1 结构验收
 

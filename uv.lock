@@ -6,20 +6,30 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "ai-film-studio",
+    "studio-ai-runtime",
+    "studio-api",
+    "studio-assets",
+    "studio-characters",
+    "studio-configuration",
+    "studio-contracts",
+    "studio-platform",
+    "studio-production",
+    "studio-projects",
+    "studio-reviews",
+    "studio-scenes",
+    "studio-story",
+    "studio-workflow",
+]
+
 [[package]]
 name = "ai-film-studio"
 version = "1.0.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "pillow" },
-    { name = "pydantic" },
-    { name = "python-docx" },
-    { name = "python-multipart" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy" },
-    { name = "uvicorn", extra = ["standard"] },
+    { name = "studio-api" },
 ]
 
 [package.optional-dependencies]
@@ -30,37 +40,27 @@ dev = [
     { name = "ruff" },
 ]
 pdf = [
-    { name = "pypdf" },
+    { name = "studio-platform", extra = ["pdf"] },
 ]
 queue = [
-    { name = "celery" },
-    { name = "redis" },
+    { name = "studio-platform", extra = ["queue"] },
 ]
 s3 = [
-    { name = "boto3" },
+    { name = "studio-platform", extra = ["s3"] },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34" },
-    { name = "celery", marker = "extra == 'queue'", specifier = ">=5.4" },
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
-    { name = "pillow", specifier = ">=10.0" },
-    { name = "pydantic", specifier = ">=2.7" },
-    { name = "pypdf", marker = "extra == 'pdf'", specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
-    { name = "python-docx", specifier = ">=1.1" },
-    { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "redis", marker = "extra == 'queue'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+    { name = "studio-api", editable = "apps/studio_api" },
+    { name = "studio-platform", extras = ["pdf"], marker = "extra == 'pdf'", editable = "packages/studio_platform" },
+    { name = "studio-platform", extras = ["queue"], marker = "extra == 'queue'", editable = "packages/studio_platform" },
+    { name = "studio-platform", extras = ["s3"], marker = "extra == 's3'", editable = "packages/studio_platform" },
 ]
-provides-extras = ["pdf", "s3", "queue", "dev"]
+provides-extras = ["dev", "pdf", "s3", "queue"]
 
 [[package]]
 name = "amqp"
@@ -1527,6 +1527,332 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/48/bb/3d8757f21e9a53d9035c9eb039a777047139a16bfdbedfc7a58241c3d914/starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b", size = 2734356, upload-time = "2026-10-24T15:04:12.342Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/2e/947cfe02def9371c07cd5bf5b6b61c829e9aecb9904db02a66cfafbc1eec/starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4", size = 80571, upload-time = "2026-10-24T15:04:10.371Z" },
+]
+
+[[package]]
+name = "studio-ai-runtime"
+version = "1.0.0"
+source = { editable = "packages/studio_ai_runtime" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "studio-contracts" },
+    { name = "studio-platform" },
+    { name = "studio-projects" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pillow", specifier = ">=10.0" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-contracts", editable = "packages/studio_contracts" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+]
+
+[[package]]
+name = "studio-api"
+version = "1.0.0"
+source = { editable = "apps/studio_api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "python-multipart" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-assets" },
+    { name = "studio-characters" },
+    { name = "studio-configuration" },
+    { name = "studio-contracts" },
+    { name = "studio-platform" },
+    { name = "studio-production" },
+    { name = "studio-projects" },
+    { name = "studio-reviews" },
+    { name = "studio-scenes" },
+    { name = "studio-story" },
+    { name = "studio-workflow" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "starlette", specifier = ">=0.37" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-assets", editable = "packages/studio_assets" },
+    { name = "studio-characters", editable = "packages/studio_characters" },
+    { name = "studio-configuration", editable = "packages/studio_configuration" },
+    { name = "studio-contracts", editable = "packages/studio_contracts" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-production", editable = "packages/studio_production" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-reviews", editable = "packages/studio_reviews" },
+    { name = "studio-scenes", editable = "packages/studio_scenes" },
+    { name = "studio-story", editable = "packages/studio_story" },
+    { name = "studio-workflow", editable = "packages/studio_workflow" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+]
+
+[[package]]
+name = "studio-assets"
+version = "1.0.0"
+source = { editable = "packages/studio_assets" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "studio-platform" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+]
+
+[[package]]
+name = "studio-characters"
+version = "1.0.0"
+source = { editable = "packages/studio_characters" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-assets" },
+    { name = "studio-platform" },
+    { name = "studio-projects" },
+    { name = "studio-story" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-assets", editable = "packages/studio_assets" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-story", editable = "packages/studio_story" },
+]
+
+[[package]]
+name = "studio-configuration"
+version = "1.0.0"
+source = { editable = "packages/studio_configuration" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "studio-platform" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+]
+
+[[package]]
+name = "studio-contracts"
+version = "1.0.0"
+source = { editable = "packages/studio_contracts" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.7" }]
+
+[[package]]
+name = "studio-platform"
+version = "1.0.0"
+source = { editable = "packages/studio_platform" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy" },
+    { name = "studio-contracts" },
+]
+
+[package.optional-dependencies]
+pdf = [
+    { name = "pypdf" },
+]
+queue = [
+    { name = "celery" },
+    { name = "redis" },
+]
+s3 = [
+    { name = "boto3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34" },
+    { name = "celery", marker = "extra == 'queue'", specifier = ">=5.4" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pypdf", marker = "extra == 'pdf'", specifier = ">=4.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "redis", marker = "extra == 'queue'", specifier = ">=5.0" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-contracts", editable = "packages/studio_contracts" },
+]
+provides-extras = ["pdf", "s3", "queue"]
+
+[[package]]
+name = "studio-production"
+version = "1.0.0"
+source = { editable = "packages/studio_production" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-assets" },
+    { name = "studio-characters" },
+    { name = "studio-platform" },
+    { name = "studio-projects" },
+    { name = "studio-scenes" },
+    { name = "studio-story" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-assets", editable = "packages/studio_assets" },
+    { name = "studio-characters", editable = "packages/studio_characters" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-scenes", editable = "packages/studio_scenes" },
+    { name = "studio-story", editable = "packages/studio_story" },
+]
+
+[[package]]
+name = "studio-projects"
+version = "1.0.0"
+source = { editable = "packages/studio_projects" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "studio-contracts" },
+    { name = "studio-platform" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-contracts", editable = "packages/studio_contracts" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+]
+
+[[package]]
+name = "studio-reviews"
+version = "1.0.0"
+source = { editable = "packages/studio_reviews" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "studio-characters" },
+    { name = "studio-platform" },
+    { name = "studio-production" },
+    { name = "studio-projects" },
+    { name = "studio-scenes" },
+    { name = "studio-story" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-characters", editable = "packages/studio_characters" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-production", editable = "packages/studio_production" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-scenes", editable = "packages/studio_scenes" },
+    { name = "studio-story", editable = "packages/studio_story" },
+]
+
+[[package]]
+name = "studio-scenes"
+version = "1.0.0"
+source = { editable = "packages/studio_scenes" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-platform" },
+    { name = "studio-projects" },
+    { name = "studio-story" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-story", editable = "packages/studio_story" },
+]
+
+[[package]]
+name = "studio-story"
+version = "1.0.0"
+source = { editable = "packages/studio_story" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-docx" },
+    { name = "sqlalchemy" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-assets" },
+    { name = "studio-platform" },
+    { name = "studio-projects" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "python-docx", specifier = ">=1.1" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-assets", editable = "packages/studio_assets" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+]
+
+[[package]]
+name = "studio-workflow"
+version = "1.0.0"
+source = { editable = "packages/studio_workflow" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "studio-ai-runtime" },
+    { name = "studio-characters" },
+    { name = "studio-platform" },
+    { name = "studio-production" },
+    { name = "studio-projects" },
+    { name = "studio-reviews" },
+    { name = "studio-scenes" },
+    { name = "studio-story" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "studio-ai-runtime", editable = "packages/studio_ai_runtime" },
+    { name = "studio-characters", editable = "packages/studio_characters" },
+    { name = "studio-platform", editable = "packages/studio_platform" },
+    { name = "studio-production", editable = "packages/studio_production" },
+    { name = "studio-projects", editable = "packages/studio_projects" },
+    { name = "studio-reviews", editable = "packages/studio_reviews" },
+    { name = "studio-scenes", editable = "packages/studio_scenes" },
+    { name = "studio-story", editable = "packages/studio_story" },
 ]
 
 [[package]]

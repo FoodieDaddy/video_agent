@@ -6,8 +6,8 @@ Usage (Windows, from the repository root):
 
 The PyInstaller bootstrappers only use the standard library, so they run on a
 machine without Python.  The application itself is staged into ``build/payload``
-and embedded in ``install.exe``; dependencies are downloaded from PyPI at
-install time (see docs/decisions/0008-windows-one-click-installer.md).
+and embedded in ``install.exe``; installation synchronizes every member against
+the included ``uv.lock`` using a pinned uv bootstrap.
 
 The script rebuilds itself with a clean python.org CPython: an executable frozen
 from a conda interpreter ships without the OpenSSL DLLs, and its ``_ssl`` module
@@ -144,15 +144,16 @@ def paint_icon(path: Path) -> Path:
 
 def stage_payload() -> Path:
     log(f"staging application files into {PAYLOAD_DIR}")
-    from common import copy_payload
+    from common import copy_payload, validate_payload
 
     copy_payload(REPO_ROOT, PAYLOAD_DIR)
     # Never ship stray screenshots or local secrets from the checkout root.
     for pattern in ("*.png", "*.log", "*.zip"):
         for item in PAYLOAD_DIR.glob(pattern):
             item.unlink(missing_ok=True)
-    if not (PAYLOAD_DIR / "backend" / "app" / "main.py").is_file():
-        raise SystemExit("payload is incomplete: backend/app/main.py is missing")
+    # 同步的是载荷副本，不写回用户正在编辑的仓库资源目录。
+    run([sys.executable, str(PAYLOAD_DIR / "scripts" / "sync_studio_resources.py")], cwd=PAYLOAD_DIR)
+    validate_payload(PAYLOAD_DIR)
     return PAYLOAD_DIR
 
 
@@ -237,9 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     shutil.rmtree(BUILD_DIR / "spec", ignore_errors=True)
 
-    install_exe = run_pyinstaller(
-        "install", INSTALLER_DIR / "install.py", with_payload=True, icon=icon
-    )
+    install_exe = run_pyinstaller("install", INSTALLER_DIR / "install.py", with_payload=True, icon=icon)
     uninstall_exe = run_pyinstaller(
         "uninstall", INSTALLER_DIR / "uninstall.py", with_payload=False, icon=icon
     )

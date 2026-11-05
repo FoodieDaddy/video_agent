@@ -4,8 +4,8 @@ What it does, in order:
 
 1. picks an install directory (default ``%LOCALAPPDATA%\\AIFilmStudio``);
 2. finds CPython >= 3.11, or downloads and installs a private copy;
-3. creates a virtual environment and installs the dependencies from PyPI;
-4. copies the application, writes ``start-studio.cmd`` and a manifest;
+3. copies the complete workspace and creates a virtual environment;
+4. synchronizes its lockfile, writes ``start-studio.cmd`` and a manifest;
 5. creates desktop / start-menu shortcuts and an uninstall registry entry;
 6. optionally starts the studio and opens the browser.
 
@@ -42,7 +42,6 @@ from common import (  # noqa: E402 - after sys.path fiddling so the frozen exe w
     log,
     pause_if_needed,
     payload_root,
-    pick_port,
     port_available,
     processes_under,
     project_metadata,
@@ -57,6 +56,8 @@ from common import (  # noqa: E402 - after sys.path fiddling so the frozen exe w
     write_text,
 )
 
+UV_VERSION = "0.12.9"
+
 
 # --------------------------------------------------------------------- launcher
 def launcher_script(root: Path, port: int, env: str) -> str:
@@ -70,11 +71,12 @@ def launcher_script(root: Path, port: int, env: str) -> str:
         f'set "APP_ENV={env}"',
         f'set "APP_DATA_DIR={root}\\data"',
         f'set "STORAGE_ROOT={root}\\data\\storage"',
-        f'set "PYTHONPATH={app_dir}\\backend"',
+        f'set "STUDIO_RESOURCE_ROOT={app_dir}"',
+        f'set "APP_CONFIG_DIR={app_dir}\\config"',
         "set PYTHONIOENCODING=utf-8",
         "set PYTHONUTF8=1",
         f'cd /d "{app_dir}"',
-        f'"{venv_python}" -m app.desktop --port {port} %*',
+        f'"{venv_python}" -m studio_api.desktop --port {port} %*',
         'set "STUDIO_EXIT=%ERRORLEVEL%"',
         "rem leave the application folder, otherwise this window keeps it locked",
         'cd /d "%USERPROFILE%"',
@@ -101,8 +103,10 @@ def install_python(root: Path, *, dry_run: bool) -> str:
     url = python_installer_url()
     # The python.org installer silently ignores a relative TargetDir, so resolve it here.
     target = (root / "python").resolve()
-    log(f"  no Python >= {'.'.join(str(part) for part in common.MIN_PYTHON)} found; "
-        f"a private copy will be installed into {target}")
+    log(
+        f"  no Python >= {'.'.join(str(part) for part in common.MIN_PYTHON)} found; "
+        f"a private copy will be installed into {target}"
+    )
     if dry_run:
         return str(target / "python.exe")
     installer = download(url, root / "python-setup.exe", label="Python runtime")
@@ -142,8 +146,7 @@ def dependency_list(meta: dict, extras: list[str]) -> list[str]:
     unknown = [name for name in extras if name not in available]
     if unknown:
         raise InstallerError(
-            f"Unknown extra(s): {', '.join(unknown)}. "
-            f"Available: {', '.join(sorted(available)) or 'none'}"
+            f"Unknown extra(s): {', '.join(unknown)}. Available: {', '.join(sorted(available)) or 'none'}"
         )
     packages = list(meta.get("dependencies", []))
     for name in extras:
@@ -151,17 +154,53 @@ def dependency_list(meta: dict, extras: list[str]) -> list[str]:
     return packages
 
 
-def install_dependencies(venv_python: Path, packages: list[str], *, dry_run: bool) -> None:
-    if not packages:
-        raise InstallerError("Nothing to install: pyproject.toml has no dependencies")
-    log(f"  installing {len(packages)} requirement(s) from PyPI...")
+def install_workspace(venv_python: Path, app_dir: Path, extras: list[str], *, dry_run: bool) -> None:
+    """使用固定 uv 同步完整 workspace；本地成员不会被当成 PyPI 包下载。"""
+    bootstrap = venv_python.parent.parent.parent / "uv-bootstrap"
+    # uv 官方 --target 布局把可执行文件放在目标的 bin/（Windows 同样如此）。
+    uv = bootstrap / "bin" / ("uv.exe" if os.name == "nt" else "uv")
+    # uv 放在 runtime 环境外，避免精确同步清理自身或 Windows 的文件锁冲突。
+    bootstrap_command = [
+        str(venv_python),
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--no-input",
+        "--upgrade",
+        "--target",
+        str(bootstrap),
+        f"uv=={UV_VERSION}",
+    ]
+    command = [
+        str(uv),
+        "sync",
+        "--frozen",
+        "--no-editable",
+        "--no-dev",
+        "--project",
+        str(app_dir),
+        "--python",
+        str(venv_python),
+    ]
+    for extra in extras:
+        command.extend(["--extra", extra])
+    env = os.environ.copy()
+    env["UV_PROJECT_ENVIRONMENT"] = str(venv_python.parent.parent)
+    log(f"  synchronizing the bundled workspace with uv {UV_VERSION} and uv.lock")
     if dry_run:
-        for package in packages:
-            log(f"    - {package}")
+        log(f"  would bootstrap: {bootstrap_command}")
+        log(f"  would run: {command}")
         return
-    base = [str(venv_python), "-m", "pip", "install", "--disable-pip-version-check", "--no-input"]
-    run(base + ["--upgrade", "pip"], check=False)
-    run([*base, "--no-warn-script-location", *packages])
+    common.validate_payload(app_dir)
+    run([str(venv_python), str(app_dir / "scripts" / "sync_studio_resources.py")], cwd=app_dir)
+    try:
+        run(bootstrap_command)
+        if not uv.is_file():
+            raise InstallerError(f"Pinned uv bootstrap is missing: {uv}")
+        run(command, cwd=app_dir, env=env)
+    finally:
+        shutil.rmtree(bootstrap, ignore_errors=True)
 
 
 def verify_packages(venv_python: Path) -> None:
@@ -169,7 +208,9 @@ def verify_packages(venv_python: Path) -> None:
         [
             str(venv_python),
             "-c",
-            "import fastapi, uvicorn, sqlalchemy, yaml, PIL, docx, pydantic, httpx; print('deps ok')",
+            "import fastapi, uvicorn, sqlalchemy, yaml, PIL, docx, pydantic, httpx; "
+            "import studio_api.desktop, studio_story, studio_production, studio_platform; "
+            "print('workspace deps ok')",
         ]
     )
 
@@ -227,19 +268,29 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         prog="install.exe",
         description="Install AI Film Studio for the current user (no admin rights needed).",
     )
-    parser.add_argument("--dir", default="", help="install directory (default: %%LOCALAPPDATA%%\\AIFilmStudio)")
+    parser.add_argument(
+        "--dir", default="", help="install directory (default: %%LOCALAPPDATA%%\\AIFilmStudio)"
+    )
     parser.add_argument("--port", type=int, default=0, help="preferred HTTP port (default 8010)")
     parser.add_argument("--python", default="", help="path to a Python >= 3.11 to build the venv with")
     parser.add_argument("--extras", default="", help="comma separated optional extras, e.g. s3,pdf")
-    parser.add_argument("--from", dest="source", default="", help="use this source tree instead of the bundled payload")
+    parser.add_argument(
+        "--from", dest="source", default="", help="use this source tree instead of the bundled payload"
+    )
     parser.add_argument("--env", default="development", help="APP_ENV for the launcher (default development)")
-    parser.add_argument("--no-shortcuts", action="store_true", help="do not create desktop/start-menu shortcuts")
-    parser.add_argument("--no-registry", action="store_true", help="do not add a Settings > Apps uninstall entry")
+    parser.add_argument(
+        "--no-shortcuts", action="store_true", help="do not create desktop/start-menu shortcuts"
+    )
+    parser.add_argument(
+        "--no-registry", action="store_true", help="do not add a Settings > Apps uninstall entry"
+    )
     parser.add_argument("--no-launch", action="store_true", help="do not start the studio afterwards")
     parser.add_argument("--with-ffmpeg", action="store_true", help="try to install FFmpeg through winget")
     parser.add_argument("--force", action="store_true", help="install into a non-empty directory")
     parser.add_argument("--dry-run", action="store_true", help="print the plan without changing anything")
-    parser.add_argument("--selftest", action="store_true", help="print diagnostics and exit (used by the build)")
+    parser.add_argument(
+        "--selftest", action="store_true", help="print diagnostics and exit (used by the build)"
+    )
     parser.add_argument("--no-pause", action="store_true", help="never wait for Enter at the end")
     return parser.parse_args(argv)
 
@@ -262,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         payload = payload_root(args.source)
         meta = project_metadata(payload)
+        dependency_list(meta, extras)  # 先校验 extra 名称，避免复制后才发现输入错误。
         log(f"  version     : {meta['version']}")
         log(f"  payload     : {payload}")
 
@@ -295,15 +347,8 @@ def main(argv: list[str] | None = None) -> int:
         if not venv_python.is_file():
             venv_python = venv / "bin" / "python"
 
-        # ------------------------------------------------------ 3. dependencies
-        log("\n[3/7] Dependencies")
-        packages = dependency_list(meta, extras)
-        install_dependencies(venv_python, packages, dry_run=dry_run)
-        if not dry_run:
-            verify_packages(venv_python)
-
-        # ---------------------------------------------------------- 4. app files
-        log("\n[4/7] Application files")
+        # ---------------------------------------------------------- 3. app files
+        log("\n[3/7] Application files")
         app_dir = root / "app"
         running = processes_under(root)
         if running and not dry_run:
@@ -324,6 +369,12 @@ def main(argv: list[str] | None = None) -> int:
                 shutil.copy2(uninstaller, root / "uninstall.exe")
                 log("  copied uninstall.exe into the install directory")
 
+        # 本地成员源码必须先复制，再同步包含 workspace 依赖的冻结锁文件。
+        log("\n[4/7] Locked workspace dependencies")
+        install_workspace(venv_python, app_dir, extras, dry_run=dry_run)
+        if not dry_run:
+            verify_packages(venv_python)
+
         # ------------------------------------------------------ 5. launcher file
         log("\n[5/7] Launcher and manifest")
         previous_port = int(existing.get("port") or 0)
@@ -331,9 +382,9 @@ def main(argv: list[str] | None = None) -> int:
         if port_available(preferred):
             port = preferred
         else:
-            # Probing a socket writes nothing, so the dry run picks the same port.
-            port = pick_port(preferred)
-            log(f"  port {preferred} is busy, using {port}")
+            raise InstallerError(
+                f"Port {preferred} is busy. Close the existing studio or explicitly select --port."
+            )
         if dry_run:
             log(f"  would write {root / LAUNCHER_NAME} (port {port})")
         else:

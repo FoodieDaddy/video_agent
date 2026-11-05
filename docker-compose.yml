@@ -26,6 +26,8 @@ services:
       # development keeps header auth on so the console is usable out of the box.
       # Set APP_ENV=production only behind an authenticating gateway.
       APP_ENV: "${APP_ENV:-development}"
+      STUDIO_RESOURCE_ROOT: "/app"
+      APP_CONFIG_DIR: "/app/config"
       APP_INLINE_TASKS: "1"
       APP_MAX_WORKERS: "${APP_MAX_WORKERS:-4}"
       DATABASE_URL: "sqlite:////data/studio.db"

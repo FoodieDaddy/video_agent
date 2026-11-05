@@ -1,241 +1,95 @@
-# Architecture Overview
+# 当前架构与阅读入口
 
-AI Film Studio is a configuration-driven, human-in-the-loop pipeline that converts a
-novel into a rendered short film. This document explains the layers, the runtime data
-flow, and the invariants the code relies on. Decisions with trade-offs are recorded in
-[`docs/decisions/`](../decisions/README.md).
+更新日期：2026 年 11 月 5 日。当前源码已形成 `apps/studio_api` 与 12 个 `packages/studio_*` 成员的 uv workspace，共 13 个可安装成员，共享 `uv.lock` 和开发环境。各成员共同运行在一个受管应用实例中。
 
-当前已实施第一批逻辑模块化，源码入口见[模块导航](../../backend/app/modules/README.md)，
-已迁移范围与后续阶段见[重构进度](refactoring-progress.md)。本文下方保留的
-`app.services`、`app.core`、`app.agents`、`app.providers` 等旧路径现在主要作为
-兼容入口；其唯一实现位于 `app.modules`。业务 ORM 映射已归入所属模块的
-`infrastructure/persistence`（platform 使用 `persistence`）；`app.models` 继续作为统一
-metadata 注册和旧导入聚合入口。Pydantic Schema 仍在 `app.schemas`，workspace 和完整仓储/DTO
-解耦尚未实施。
+旧 `backend/app` 是指向 `apps/studio_api/src/app` 的兼容符号链接；旧 `app.*`、`app.modules.*`、models/schemas 路径转发到 canonical 包，重要模块和类保持对象身份。新增实现进入 `studio_*` 包，不反向借用旧目录。迁移事实与验证证据见[重构进度](refactoring-progress.md)，目标和保留边界见[重构方案](modular-monolith-refactoring-proposal.md)。
 
-## 1. Design goals
+## 1 应用、业务与技术能力
 
-| Goal | Consequence in the code |
+```text
+浏览器 → studio_api.api → studio_<业务>.public / contracts
+                                  │
+                     application 用例 / 查询 / 命令
+                         │                       │
+                       domain            infrastructure
+                                         仓储 / ORM / Agent
+
+studio_workflow → 业务模块公开用例
+studio_reviews → 领域状态规则 + 各数据所有者的批准操作
+studio_ai_runtime → 通用执行 / Provider / 审计
+studio_platform → 配置 / Base / Session / 存储 / FFmpeg / 任务线程
+studio_api.bootstrap → Agent / Schema / ORM 聚合及依赖装配
+```
+
+`studio_api.main` 创建 FastAPI、注册中间件/异常处理和路由；`bootstrap/lifespan.py` 管理启动与关闭。`bootstrap/composition.py` 汇总 Agent、输出 Schema、模型和审核读取端口装配。platform 和 ai_runtime 不反向导入应用组合根或业务实现。
+
+应用为 13 类角色装配 17 个 Agent ID，Schema 目录为 14 个输出名称装配类型，并维护 7 个 JSON Schema 导出文件。通用注册表只保存协议、类型和执行目录；业务 Agent 与 Schema 均归所属包。
+
+## 2 按业务阅读代码
+
+每个成员的源码在 `packages/studio_<名称>/src/studio_<名称>/`。先看 `public.py`、`contracts.py` 与模块 README，再按具体用例进入 application、domain、infrastructure。
+
+| 包 | 内容与数据所有权 |
 | --- | --- |
-| Model choice is configuration, not code | Agents read `config/agents/*.yaml`; provider YAML only references env-var **names** |
-| Cheap work before expensive work | Script → characters/scenes → gate → director → storyboard → gate → shots → gate → audio/edit → gate → export |
-| Nothing silent is lost | Every stage writes versioned rows; every workflow node writes a checkpoint; every model call writes `agent_runs` + `model_call_logs` |
-| Restartable | Workflow cursor and outputs live in `workflow_runs.state`; tasks and events live in tables |
-| Offline first | `mock` provider renders real files through FFmpeg; the whole suite runs without keys or GPU |
-| One obvious extension point per feature | New agent = class + registry entry + YAML + prompt + schema; new stage = handler + YAML node |
+| `studio_projects` | 项目、用户/成员、权限、状态和费用写入；ProjectContext 查询 |
+| `studio_story` | 源文档、章节、剧本、故事事件、正文工作区和基线指纹 |
+| `studio_characters` | 人物、档案、关系、图片、服装/状态、声线、人物批准写入 |
+| `studio_scenes` | 场景、档案、参考资产、场景批准写入 |
+| `studio_production` | 导演、分镜、镜头视频、音轨、剪辑、渲染、评估和制作批准写入 |
+| `studio_reviews` | 审核记录、评论、决定与批准协调；工作流读取由注入端口提供 |
+| `studio_workflow` | YAML 节点协调、人工关卡、暂停恢复、任务业务分派 |
+| `studio_assets` | 资产登记、版本、引用 DTO 和字节存储访问协调 |
+| `studio_configuration` | 配置版本账本、激活与回滚 |
+| `studio_ai_runtime` | Agent 基类、Provider、执行和输出 Schema 注册机制 |
+| `studio_platform` | 配置解析、数据库基础、技术任务表与线程、存储、媒体工具 |
+| `studio_contracts` | 序列化协议和最小 ProjectIdentity 协议 |
 
-## 2. Layers
+ORM 类定义在各所有者 `infrastructure/persistence`，技术 Task/TaskEvent 位于 platform persistence。所有映射共享 `studio_platform.persistence.base.Base`，39 张表在应用 model catalog 中集中注册；旧 `app.models` 继续导出同一类。业务 Pydantic Schema 在所属包 `schemas/`，旧 `app.schemas` 继续别名到同一类型。
 
-```
-HTTP (FastAPI, /api/v1)                web/ console (vanilla JS, no build)
-        │                                        │
-        ▼                                        ▼  fetch + SSE
-api/routes/* ──► modules/<business>/public ──► application use cases / queries
-                         │                               │
-                         ▼                               ▼
-               workflow / reviews                  ai_runtime execution
-                         │                               │
-                         ▼                               ▼
-            platform task runner             registered business Agent → Provider
+人物图片用例在 characters；production 保留旧人物图片转发接口。制作媒体按 `shot_video.py`、`audio.py`、`editing.py`、`quality.py` 分开，共享读取位于 `media_support.py`；旧 `application.media` 只重新导出。
 
-platform: config / Base / Session / storage / FFmpeg
-bootstrap: 13 business roles → 17 executable Agent IDs
-```
+## 3 公开边界与兼容期
 
-### 2.1 `core/`
+跨业务模块只导入 public/contracts。制作模块使用人物/场景生成输入深副本、剧本 Snapshot、资产引用等 DTO；项目状态和费用由 projects 写入，任务分派通过 ProjectContext 和业务实体 ID 调用数据所有者。审核中的产物批准也由所属业务模块执行。
 
-* `settings.py` — frozen `Settings` built by `load_settings()`: `config/app.yaml` <
-  `config/environments/<APP_ENV>.yaml` < environment variables. Directories are created
-  in `ensure_dirs()`.
-* `config_models.py` — typed views of agent/provider/workflow YAML (pydantic models).
-* `config_store.py` — loads `config/**` once, computes `stable_checksum` per file, and
-  merges the **active** `config_versions` override row on top of the YAML.
-* `security.py` — development header auth (`X-User-Id`, `X-User-Role`); resolves to the
-  demo admin identity when no header is sent.
-* `exceptions.py` — `AppError` hierarchy mapped to HTTP status codes by `main.py`.
+`ScriptSnapshot`、人物/场景 payload 是与 Session 脱离的深副本；冻结 dataclass 字段并不代表嵌套 JSON 不可修改，也不代表所有读取跨多条查询构成一致数据库快照。剧本校验入口显式刷新并核验指纹，不能用已有 DTO 冒充后续写入时的最新状态。
 
-### 2.2 `models/` and `schemas/`
+HTTP、旧服务接口和若干显式 legacy 适配仍接收 Session 或返回 ORM。兼容入口只转发，不复制规则；仓储与 DTO 还没有覆盖每一个存量公共函数。删除旧入口应单独评审消费者和发布兼容策略。
 
-SQLAlchemy mappings live beside their owning modules and share the single platform `Base`.
-`app.models` imports and re-exports those mappings for metadata registration and legacy
-imports. Pydantic classes remain under `app.schemas/` and describe agent input/output.
-`schemas/registry.py` maps a schema name from agent YAML to a pydantic model, so validation
-never hardcodes an agent. `scripts/export_schemas.py` exports them to `config/schemas/*.json`.
+架构测试扫描真实 canonical 源码，检查业务/技术公开入口、DAG、纯 domain 依赖、旧路径反向依赖及成员直接包依赖声明；惰性 public 导出同样纳入依赖图。安装成员不会自动提供运行时安全隔离。
 
-### 2.3 `providers/`
+## 4 工作流、任务与审核
 
-A provider implements one capability bucket (`llm`, `vision`, `image`, `video`, `audio`)
-behind `providers/base.py`:
+`config/workflows/*.yaml` 定义有序 handler/gate 节点。WorkflowRun 保存节点输出和 `next_index`，节点执行写 checkpoint。新运行同时保存 `state.workflow_definition`；恢复优先使用定义快照，历史无快照记录回退读取当前定义。
 
-```python
-async def complete(...) / describe_image(...) / generate_image(...) / generate_video(...) / synthesize(...)
+这仅冻结工作流定义。Agent、Provider、Prompt、环境变量和外部服务版本仍按现有配置解析；配置指纹是出处证据，并非可复现执行包。工作流仍是顺序引擎，Orchestrator 的计划输出不承担运行时动态调度。
+
+TaskRunner 在进程内使用线程或线程池，处理函数在自己的 Session 中执行。取消主要在阶段/循环边界生效，不能保证中断已发出的模型请求或 FFmpeg。任务事件持久化到表并通过 SSE/polling 读取；这不等于已经完成多实例可靠领取和崩溃恢复。
+
+四个人工关卡保留现有业务范围。分镜关绑定来源、版本和镜头内容指纹；第一关等其他范围按各自当前规则处理。审批决定默认不自动排队恢复，调用方需显式请求续跑；驳回不自动重新生成全部上游产物。
+
+## 5 配置、资源与安装
+
+配置来源保持根 `config/app.yaml`、环境 YAML 和环境变量覆盖规则；应用/检查脚本可读取根 `.env`，进程环境值优先。正式凭据不进入 wheel、安装 payload、报告或源码。
+
+`studio_api.resource_root` 统一定位资源：显式 `STUDIO_RESOURCE_ROOT` 优先；源码使用仓库的 config/web/samples；wheel 使用随包资源。`scripts/sync_studio_resources.py` 从正式目录同步资源副本，构建前执行，不编辑副本。
+
+```bash
+uv sync --frozen --extra dev
+uv run --frozen --extra dev python scripts/sync_studio_resources.py
+uv build --all-packages --wheel
 ```
 
-`providers/mock.py` generates deterministic text and delegates file generation to
-`providers/mock_generators.py` (Pillow frames, FFmpeg clips, silent WAV).
-`providers/openai_compat.py` speaks `POST {base_url}/chat/completions` so OpenAI, Azure
-proxies, vLLM and DashScope-compatible endpoints all work. `providers/registry.py`
-resolves `(capability, provider_name)` using the YAML: a disabled provider or a missing key
-env var raises `ProviderUnavailableError`, an unknown provider/model kind or a protocol that
-cannot serve the capability raises `ConfigurationError` — always before the first call, never
-halfway through a paid stage.
+每个 workspace 成员声明自己的直接依赖；所有成员使用同一锁文件和依赖解。测试与脚本通过已安装包导入，无需把 backend 加到 `PYTHONPATH`。
 
-### 2.4 `agents/`
+## 6 事务与运行限制
 
-`BaseAgent` holds the whole per-agent contract:
+多数应用用例只 flush，由外层决定提交或回滚；工作流在既有节点边界提交。数据库提交与模型请求、文件写入和远端费用不构成一个事务，部分媒体生成可返回失败明细；不能把函数正常返回等同于所有产物成功或已通过审核。
 
-1. render the system/user prompt from `prompt.system` / `prompt.user_template` (with the
-   `prompt.version` recorded on the run);
-2. validate the input payload with the pydantic model from `schemas/`;
-3. call the configured provider with `generation.*` parameters, retrying
-   `generation.max_retries` times;
-4. when `structured_output.enabled`, parse JSON, validate against the schema and repair
-   `structured_output.repair_attempts` times;
-5. on provider failure, retry once through `model.fallback_provider` /
-   `model.fallback_model_id`;
-6. apply `evaluation.checks` / `thresholds` when configured;
-7. return an `AgentResult` carrying provider, model, latency, token usage, cost and the
-   config version.
+单实例、单 Uvicorn worker 仍是默认运行方式：
 
-`services/agent_runner.py::run_agent` wraps that in an `AgentRun` row (input, output,
-status, error, latency, prompt/config version) and records `ModelCallLog` entries, so cost
-and failures are auditable per project/task.
-
-### 2.5 `services/`
-
-| Module | Responsibility |
-| --- | --- |
-| `projects.py` | projects, membership, owner/member scoping, dashboard |
-| `documents.py` | upload (txt/md/docx/pdf), sample ingestion, chapter parsing into `story_chapters` |
-| `pipeline.py` | script, characters/profiles, scenes, directing, storyboard, shots, all `*_public` serializers |
-| `media.py` | character sheets, per-shot video versions + selection, TTS/subtitles, edit timeline, FFmpeg render/export |
-| `quality.py` | DB-derived metrics + evaluation agent run |
-| `reviews.py` | review lifecycle (pending → approved/rejected), comments, gate lookups |
-| `config_admin.py` | config version ledger, activate/rollback, DB override merge |
-| `workflow.py` | workflow engine (see §3) |
-| `workflow_handlers.py` | node name → service call mapping |
-| `tasks.py` | `Task`/`TaskEvent` records, thread runner, cancellation |
-| `runtime.py` | process-wide singletons: settings, config store, storage, runner |
-
-Services take `(db, runtime, *, project=..., task=..., user_id=...)` and emit task events;
-they never read HTTP concerns.
-
-## 3. Workflow engine
-
-New runs persist a JSON `workflow_definition` snapshot in `workflow_runs.state`; resume prefers it over mutable YAML. Legacy runs without a snapshot retain the previous current-config fallback.
-
-
-Workflow definitions are YAML (`config/workflows/*.yaml`) with an ordered `nodes` list:
-
-```yaml
-- id: extract_characters
-  type: handler              # handler | gate
-  handler: characters        # key in services/workflow_handlers.HANDLERS
-  agent: character_extraction
-  title: 人物提取与档案
-  continue_on_error: false   # optional: log the failure and continue
-- id: review_characters_scenes
-  type: gate
-  review_stage: characters_scenes
+```bash
+uv run --frozen --extra dev uvicorn studio_api.main:app --host 127.0.0.1 --port 8010 --workers 1
 ```
 
-Runtime rules:
-
-* `workflow_runs.state` = `{"next_index", "outputs", "workflow_config_version"}`. The
-  cursor is the source of truth; `resume()` continues at exactly that node.
-* Every node writes a `workflow_checkpoints` row (`status`, `summary`, `output`, `error`).
-* A `gate` node calls `reviews.get_or_create_pending(...)`. If nothing is approved yet it
-  parks the run in `awaiting_review` and returns; the API then exposes a pending review.
-* `POST /reviews/{id}` with `approved` resumes the run; `rejected` records the comment and
-  re-opens a **new** pending review for the same stage — the run never advances.
-* One active run per project/definition is enforced (`ValidationAppError`).
-* On handler failure: `continue_on_error: true` stores `{"error": ...}` in outputs and
-  moves on; otherwise the run is marked `failed` with the error message and checkpoint.
-* `stop=ctx.stop` is threaded into long media loops, so cancelling the task aborts
-  between shots/segments instead of after the entire stage.
-
-Because the engine is our own ~200 lines instead of a graph framework, the checkpoint
-semantics, review parking and cancellation hooks are explicit and unit-testable.
-
-> Pitfall encoded in the code: the engine mutates the state dict in place, so it always
-> writes back **a copy** (`run.state = dict(state)`). Re-assigning the same object is
-> invisible to SQLAlchemy and leaves the cursor stale — which silently replays stages.
-
-## 4. Tasks and progress
-
-Long-running work is always a `Task`:
-
-```
-route ──► tasks.enqueue(runtime, project, type, runner) ──► Task row (pending) ──► runner thread
-                                                                          │
-                                                       emit(event) ──► task_events ──► SSE / polling
-```
-
-* `tasks.inline: true` starts a dedicated thread per task (`APP_INLINE_TASKS=0` switches to
-  a bounded `ThreadPoolExecutor`).
-* The worker opens its own session (`session_scope`), sets `running`, records the config
-  version snapshot, runs the async handler with `asyncio.run`, then writes
-  `succeeded` / `failed` / `cancelled`. Failures are stored on the task and emitted as an
-  `error` event, never raised into the request thread.
-* `?wait=true` on mutating endpoints runs the task and waits (bounded) before returning —
-  convenient for the console and tests.
-* SSE (`GET /projects/{id}/tasks/{task_id}/events/stream`) polls `task_events` and emits
-  `event: task` frames plus a terminal `event: end`. Using the table (rather than an
-  in-process bus) keeps it correct with multiple workers. The console consumes it with
-  `fetch` + `ReadableStream` because `EventSource` cannot send auth headers.
-
-## 5. Versioning and reproducibility
-
-| Entity | Versioning |
-| --- | --- |
-| `scripts`, `character_profiles`, `scene_profiles`, `directing_plans`, `storyboards`, `editing_projects` | incrementing `version` per project; newest wins, older rows stay queryable |
-| `video_generations` | every attempt kept; `shots.selected_video_id` picks the approved take |
-| `assets` | content-addressed storage keys; `kind` distinguishes image/video/audio/subtitle/film |
-| `config_versions` | checksummed snapshots of the agent/provider/workflow config; one active row merged over YAML; activate/rollback supported |
-| `workflow_runs.config_versions`, `tasks.config_versions`, `agent_runs.config_version` | freeze the config actually used |
-
-A task therefore answers "which prompt, which model, which config checksum produced this?"
-
-## 6. API surface and console
-
-* All endpoints live under `/api/v1` (`api/router.py`); `/health` and `/media/{key}` are
-  outside the prefix. Full reference: [../api/README.md](../api/README.md).
-* Errors use one envelope: `{"error": {"code", "message", "details", "request_id"}}`.
-* The console (`web/`) is served by the same process: `/` → `index.html`, `/app.js`,
-  `/styles.css`. It has eleven workbench tabs mirroring the pipeline stages plus an admin
-  tab for model configuration.
-
-## 7. Storage and media
-
-* The database stores **object keys**, never blobs. `LocalStorage` (default) and
-  `S3Storage` (`STORAGE_BACKEND=s3`) implement the same interface; path traversal is
-  rejected by `LocalStorage.path_for`.
-* `utils/ffmpeg.py::resolve_binary` locates `ffmpeg`/`ffprobe` from settings, PATH or a
-  bundled binary and raises a descriptive error.
-* Mock providers still call FFmpeg, so a green test run proves the media path works
-  (colour frames, silent clips, normalised WAV, burned-in subtitles, H.264 export).
-
-## 8. Deployment topology
-
-```
-browser ──► nginx (optional) ──► uvicorn (FastAPI, 1+ replicas) ──► PostgreSQL (prod) / SQLite (dev)
-                                        │
-                                        ├── object storage (S3/MinIO) or local data/storage
-                                        └── ffmpeg subprocesses
-```
-
-`docker-compose.yml` runs one API container (tasks inline) with `data/` bind-mounted and an
-optional MinIO profile. Scaling out requires a real database, `tasks.inline: false` and an
-external worker (documented gap) — see ADR 0006.
-
-## 9. Where to change what
-
-| I want to… | Touch |
-| --- | --- |
-| swap model/provider for one agent | `config/agents/<id>.yaml` or the console 模型配置 tab |
-| add a provider | `providers/*` implementation + `config/providers/<capability>.yaml` |
-| add an agent | see [../agents/README.md](../agents/README.md) |
-| add/reorder pipeline stages | `config/workflows/*.yaml` (+ handler if the stage is new) |
-| change review gates | `type: gate` nodes and `reviews.py` |
-| change API shape | `api/routes/*` + `api/serializers.py` |
-| change the console | `web/app.js` |
+Docker 与 Windows 安装器已按完整 workspace 和锁文件调整。当前环境 Docker daemon 不可用，容器构建/运行未验收；Windows 原生 EXE 构建、安装、启动与卸载也未执行。mock 媒体与离线检查证明的是机制，真实模型质量、生产鉴权和可靠多实例执行仍需独立验收。

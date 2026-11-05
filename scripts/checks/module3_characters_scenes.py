@@ -49,7 +49,6 @@ from unittest.mock import patch
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
 
 import httpx  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
@@ -68,42 +67,42 @@ from app.models.production import (  # noqa: E402
 from app.models.project import Asset, Project  # noqa: E402
 from app.models.scene import Scene, SceneProfile  # noqa: E402
 from app.models.story import StoryEvent  # noqa: E402
-from app.modules.ai_runtime.base import AgentContext  # noqa: E402
-from app.modules.ai_runtime.providers import registry as provider_registry  # noqa: E402
-from app.modules.ai_runtime.providers.base import LLMResult  # noqa: E402
-from app.modules.ai_runtime.public import execution as agent_runner  # noqa: E402
-from app.modules.ai_runtime.registry import create_agent  # noqa: E402
-from app.modules.characters import public as character_module  # noqa: E402
-from app.modules.platform.configuration.config_models import ModelRef, ProviderConfig  # noqa: E402
-from app.modules.platform.configuration.config_store import stable_checksum  # noqa: E402
-from app.modules.platform.configuration.settings import load_settings  # noqa: E402
-from app.modules.platform.exceptions import (  # noqa: E402
+from studio_ai_runtime.base import AgentContext  # noqa: E402
+from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
+from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
+from studio_ai_runtime.public import execution as agent_runner  # noqa: E402
+from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_characters import public as character_module  # noqa: E402
+from studio_characters.contracts import (  # noqa: E402
+    CharacterDescriptionInput,
+    CharacterExtractionInput,
+    CharacterExtractionOutput,
+    CharacterProfileOutput,
+)
+from studio_platform.configuration.config_models import ModelRef, ProviderConfig  # noqa: E402
+from studio_platform.configuration.config_store import stable_checksum  # noqa: E402
+from studio_platform.configuration.settings import load_settings  # noqa: E402
+from studio_platform.exceptions import (  # noqa: E402
     AgentSchemaError,
     ConflictError,
     PermissionDeniedError,
     ValidationAppError,
     WorkflowError,
 )
-from app.modules.platform.execution.runtime import build_runtime  # noqa: E402
-from app.modules.platform.execution.task_runner import reset_runner  # noqa: E402
-from app.modules.platform.persistence.session import init_engine, init_schema, reset_engine, session_scope  # noqa: E402
-from app.modules.projects import public as projects  # noqa: E402
-from app.modules.reviews import public as reviews  # noqa: E402
-from app.modules.scenes import public as scene_module  # noqa: E402
-from app.modules.story import public as story_module  # noqa: E402
-from app.modules.workflow.public import HandlerContext, WorkflowEngine, get_run, require_handler  # noqa: E402
-from app.schemas.character import (  # noqa: E402
-    CharacterDescriptionInput,
-    CharacterExtractionInput,
-    CharacterExtractionOutput,
-    CharacterProfileOutput,
-)
-from app.schemas.scene import (  # noqa: E402
+from studio_platform.execution.runtime import build_runtime  # noqa: E402
+from studio_platform.execution.task_runner import reset_runner  # noqa: E402
+from studio_platform.persistence.session import init_engine, init_schema, reset_engine, session_scope  # noqa: E402
+from studio_projects import public as projects  # noqa: E402
+from studio_reviews import public as reviews  # noqa: E402
+from studio_scenes import public as scene_module  # noqa: E402
+from studio_scenes.contracts import (  # noqa: E402
     SceneDescriptionInput,
     SceneExtractionInput,
     SceneExtractionOutput,
     SceneProfileOutput,
 )
+from studio_story import public as story_module  # noqa: E402
+from studio_workflow.public import HandlerContext, WorkflowEngine, get_run, require_handler  # noqa: E402
 
 TARGETS = ("character_extraction", "character_description", "scene_extraction", "scene_description")
 GROUPS = (
@@ -280,7 +279,7 @@ def build_sandbox(args: argparse.Namespace, report: Report) -> tuple[Path, Any, 
     load_settings(data_dir=...) 本身不足以隔离 DATABASE_URL/STORAGE_ROOT，
     而且函数末尾会立即建目录。因此环境覆盖必须发生在加载配置之前。
     """
-    from app.bootstrap.composition import configure_application
+    from studio_api.bootstrap.composition import configure_application
 
     configure_application()
     root = Path(tempfile.mkdtemp(prefix="studio_m3_")).resolve()

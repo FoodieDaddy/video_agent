@@ -31,6 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCOPES = ("lint", "format", "types", "architecture")
 SCOPES = (*DEFAULT_SCOPES, "tests", "smoke")
+SOURCE_TARGETS = ("apps", "packages", "backend/tests", "scripts/checks")
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ def selected_scopes(requested: list[str] | None) -> tuple[str, ...]:
 def build_steps(scopes: tuple[str, ...], python: str | None = None) -> list[GateStep]:
     executable = python or sys.executable
     commands = {
-        "lint": ("-m", "ruff", "check", "backend", "scripts/checks"),
+        "lint": ("-m", "ruff", "check", *SOURCE_TARGETS),
         "format": (
             "-m",
             "ruff",
@@ -64,8 +65,7 @@ def build_steps(scopes: tuple[str, ...], python: str | None = None) -> list[Gate
             "--check",
             "--output-format",
             "concise",
-            "backend",
-            "scripts/checks",
+            *SOURCE_TARGETS,
         ),
         "types": ("-m", "mypy", "--config-file", "pyproject.toml"),
         "architecture": (
@@ -112,7 +112,8 @@ def isolated_environment(root: Path, sandbox: Path) -> dict[str, str]:
             "TEMP": str(sandbox),
         }
     )
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, (str(root / "backend"), env.get("PYTHONPATH"))))
+    # 工作区成员由 uv 安装；清除临时路径注入，防止兼容目录掩盖漏装的包。
+    env.pop("PYTHONPATH", None)
     return env
 
 

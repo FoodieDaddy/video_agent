@@ -2,11 +2,27 @@
 
 - 日期：2026 年 11 月 5 日
 - 当前分支：`codex/normalize-project-structure`
-- 状态：逻辑模块化、工作流定义快照、39 个 ORM 映射归属、production/media 拆分，以及 story 与 asset 的首批 DTO 边界已落地；其余仓储/DTO 边界与 workspace 仍在后续阶段
+- 状态：13 成员 uv workspace、业务归属、主要 DTO/ID/端口边界已落地；本地全量门禁与干净安装验证通过；Docker/Windows 原生交付及完整 legacy 接口收敛仍有待验项
 
-本批按[改动说明](modular-monolith-refactoring-proposal.md)推进业务分包，保留原有运行方式和业务行为。当前仍是 `backend/app` 下的模块化单体，目标中的 `apps`、`packages`、独立成员 `pyproject.toml` 和 workspace 尚未建立。
+当前结构由 `apps/studio_api` 和 12 个 `packages/studio_*` 包组成，共 13 个 uv workspace 成员；均采用 src 布局、独立 `pyproject.toml` 和共同 `uv.lock`。标准启动为 `studio_api.main:app`，通过安装后的包导入。`backend/app` 是指向 `apps/studio_api/src/app` 的兼容符号链接。历史第 1～9 批保留各批实施时的事实与命令，不作为当前目录或完成状态。
 
-## 已实施内容
+
+## 当前验证与待验项（2026-11-05）
+
+| 项目 | 实际证据 |
+| --- | --- |
+| 完整门禁 | `quality_gate.py --scope all --scope tests --scope smoke` 5/5 通过 |
+| 后端回归 | 361 项通过；类型检查当前覆盖 6 个文件，严格检查通过 |
+| 独立模块离线检查 | 模块 1：6 通过、1 个网络探针跳过；模块 2：8/8；模块 3：10/10；模块 4：13/13 |
+| 多包构建 | 13 个 wheel 与 13 个 sdist 构建成功 |
+| 干净安装 | 非 editable 安装后不依赖源码搜索路径；TestClient 四关 mock 流程、控制台、随包资源与 70,043 字节导出均通过，临时目录已清理 |
+| HTTP/数据库结构 | 与 `520282f` 对照，71 个 OpenAPI 路径及 20 个 Schema 一致；39 张表结构一致，默认值 callable 的 Python 模块出处因迁移而变化 |
+
+以上是本地、隔离数据库和 mock 的机制验收，没有新增真实模型质量证据。TestClient 检查不启动第二个独立网页服务。
+
+尚需分别完成或保留的事项：Docker daemon 在当前环境不可用，容器构建/运行未执行；Windows 原生 EXE 构建、安装、启动与卸载未执行。部分 HTTP 与显式 legacy 函数仍接收 Session/返回 ORM，完整仓储/DTO 解耦未覆盖全部存量接口；旧导入层继续保留，删除须单独完成消费者审计和发布兼容评审。部署鉴权、可靠队列、并发、取消与外部调用崩溃恢复继续独立实施。
+
+## 历史阶段：已实施内容
 
 | 内容 | 当前结果 |
 | --- | --- |
@@ -20,7 +36,7 @@
 | 消费者接线 | API、序列化、工作流和模块检查使用新公开入口；保留旧导入兼容 |
 | 架构约束 | 增加模块同一性、单份元数据、角色注册、依赖 DAG、公开接口和领域依赖检查 |
 
-本次提取出两个额外的明确边界：`assets` 管理业务资产登记，避免 story 与 production 相互依赖；`configuration` 管理配置版本账本，区别于底层 YAML/环境解析。完整目录导航见[模块说明](../../backend/app/modules/README.md)。
+本次提取出两个额外的明确边界：`assets` 管理业务资产登记，避免 story 与 production 相互依赖；`configuration` 管理配置版本账本，区别于底层 YAML/环境解析。当前目录导航见[架构阅读说明](overview.md)；本节所述路径为当时的逻辑模块布局。
 
 ## 保持的契约
 
@@ -78,13 +94,14 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 
 本批不替代数据库迁移、事务补偿、幂等恢复、审核快照、生产身份、Docker/Windows 完整依赖锁定或单实例锁的独立实施；这些任务及验收证据已列入工程规范。
 
-## 后续阶段
+## 后续收尾与交付验证
 
-1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已进入 domain，workflow/reviews 和部分资产写入已消费 DTO，其他应用接口仍保留原 Session/ORM 契约。
-2. 业务 ORM 映射已归入所属模块并保留共享 Base；继续迁移仓储、DTO 与跨模块查询，再逐步收拢 `app.models` 聚合注册。
-3. production/media 已按人物资产、镜头视频、配音字幕、剪辑渲染和质量首轮拆分；后续保持职责边界并避免重新聚合成大文件。
-4. 在已收束的公开边界上迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
-5. 旧入口的删除另作兼容性变更，不与本次迁移混在一起。
+1. 按调用方需要继续收窄 HTTP/legacy Session 与 ORM 返回，不通过增加宽泛公共实体导出绕过模块边界。
+2. 在可用 Docker daemon 中验证完整 workspace 镜像构建、资源与单实例启动。
+3. 在原生 Windows 验证安装 EXE、锁文件依赖安装、启动/停止和卸载。
+4. 审计外部旧路径消费者后，将删除兼容入口作为独立变更；本批不删除。
+5. 真实模型、媒体质量和部署运行策略按各自证据验收，不能复用 mock 结果代替。
+
 
 场景字段透传、审核版本快照、任务并发和取消等已知行为问题仍需独立处理。本批目录与职责迁移不宣称已经修复这些问题，也没有接入 LangGraph、DSH 或 Pi。
 
@@ -153,3 +170,14 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 - platform 与 ai_runtime 不再反向导入 bootstrap；正式应用、兼容入口及离线检查显式装配。
 
 本批合并检查：lint、格式、选定类型检查通过；全量后端 336 项通过、1 项测试夹具仍直接修改旧项目实体而失败。该夹具已改用项目费用公开用例，所在文件 17 项回归通过。后续 workspace 全量门禁将覆盖本批最终状态。未调用真实模型或启动额外服务。
+
+
+## 第十批：实际 uv workspace 与交付路径
+
+- 将应用实现迁至 `apps/studio_api/src/studio_api`，12 个业务/技术实现迁至 `packages/studio_*/src/studio_*`；每个成员有独立依赖声明，根项目共同冻结到 `uv.lock`。
+- `apps/studio_api/src/app` 保留旧路径转发，`backend/app` 为该兼容目录的符号链接。配置缓存、ORM 元数据、Agent/Schema 注册表和 Provider 观察点保持同一对象，应用组合根负责完整装配。
+- 标准启动、模块检查和门禁通过已安装包导入，测试不再依赖 backend 的 PYTHONPATH 注入。架构扫描 canonical 源码，覆盖依赖 DAG、公开入口、领域规则和直接成员依赖清单。
+- 正式资源继续编辑根 config/web/samples，构建前由 `scripts/sync_studio_resources.py` 同步到应用随包资源；wheel 的资源定位支持独立安装。
+- Dockerfile 与 Windows payload/安装路径已调整为完整 workspace 和冻结依赖；交付实现与运行验证分开记录，外部平台未执行项见顶部。
+
+本批最终证据为本页“当前验证与待验项”表；不使用历史逻辑分包的通过报告替代新目录验证。仓库和模块 README 已切换到 canonical 阅读路径，历史批次说明保留。

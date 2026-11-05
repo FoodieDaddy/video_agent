@@ -17,6 +17,7 @@ Revisit when**.
 | [0006](0006-task-runner-and-sse-from-db-events.md) | Thread runner + `task_events` table as the SSE source | Accepted |
 | [0007](0007-mock-first-media-and-local-storage.md) | Mock provider that renders real media; local storage by default | Accepted |
 | [0008](0008-windows-one-click-installer.md) | Windows one-click install/uninstall executables instead of a bundled runtime | Accepted |
+| [0009](0009-uv-workspace-delivery.md) | workspace 源码、容器与 Windows 安装共用 uv.lock | Accepted；替代 0008 的应用依赖安装策略 |
 
 ## Conventions
 

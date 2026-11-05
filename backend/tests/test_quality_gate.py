@@ -32,10 +32,26 @@ def test_gate_selects_defaults_and_deduplicates_full_test_scope(gate):
     commands = {
         step.name: step.command for step in gate.build_steps(gate.DEFAULT_SCOPES, python="python-test")
     }
-    assert commands["lint"] == ("python-test", "-m", "ruff", "check", "backend", "scripts/checks")
+    assert commands["lint"] == (
+        "python-test",
+        "-m",
+        "ruff",
+        "check",
+        "apps",
+        "packages",
+        "backend/tests",
+        "scripts/checks",
+    )
     assert "--check" in commands["format"]
     assert commands["types"] == ("python-test", "-m", "mypy", "--config-file", "pyproject.toml")
     assert commands["architecture"][-1] == "backend/tests/test_modular_architecture.py"
+
+
+def test_gate_uses_installed_workspace_members_without_pythonpath_override(gate, tmp_path, monkeypatch):
+    monkeypatch.setenv("PYTHONPATH", str(tmp_path / "legacy-source"))
+    env = gate.isolated_environment(tmp_path, tmp_path / "sandbox")
+    assert "PYTHONPATH" not in env
+    assert os.environ["PYTHONPATH"] == str(tmp_path / "legacy-source")
 
 
 def test_list_is_read_only_and_never_starts_a_subprocess(gate, monkeypatch, capsys):

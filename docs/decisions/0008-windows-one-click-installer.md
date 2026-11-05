@@ -1,6 +1,6 @@
 # ADR 0008 — Windows one-click installer (`install.exe` / `uninstall.exe`) instead of a bundled runtime
 
-* **Status:** Accepted
+* **Status:** 应用依赖安装策略已被 [ADR 0009](0009-uv-workspace-delivery.md) 替代；其余安装器决定保留为历史依据。
 * **Date:** 2026-11-02
 * **Deciders:** platform team
 

@@ -1,0 +1,1120 @@
+{
+  "date": "2026-11-05",
+  "purpose": "workspace 迁移前后独立 HTTP/ORM 契约与工程依赖核验",
+  "baseline_commit": "520282fdbf43b75ca7614e10b3f192896f40dd15",
+  "current_head": "520282fdbf43b75ca7614e10b3f192896f40dd15",
+  "current_worktree_uncommitted": true,
+  "source_before": {
+    "sha256": "63d6c161d31637c95df53ab5864f9e1306bfe6f0609f0c6cd7e28d283f129b24",
+    "file_count": 569
+  },
+  "source_after": {
+    "sha256": "63d6c161d31637c95df53ab5864f9e1306bfe6f0609f0c6cd7e28d283f129b24",
+    "file_count": 569
+  },
+  "source_stable_during_capture": true,
+  "environment": {
+    "python": "Python 3.12.13",
+    "current_import_mode": "已安装的 workspace editable packages；临时工作目录且未设置 PYTHONPATH",
+    "baseline_import_mode": "git archive 完整基线；显式 app namespace 限定到归档 backend/app，防止已安装兼容包遮蔽",
+    "app_env": "test",
+    "provider": "mock",
+    "env_file": "已创建的空临时 APP_ENV_FILE",
+    "data": "独立临时目录，完成后删除",
+    "lifespan_started": false,
+    "network_connections": 0,
+    "socket_connect_and_bind_forbidden": true,
+    "database_created": false
+  },
+  "openapi": {
+    "exactly_identical": true,
+    "baseline_path_count": 71,
+    "current_path_count": 71,
+    "baseline_component_count": 20,
+    "current_component_count": 20,
+    "baseline_sha256": "a5d1f11ddc752fafd698198f6d3befc9dab99941f2c8db8dcc514e812a09d41e",
+    "current_sha256": "a5d1f11ddc752fafd698198f6d3befc9dab99941f2c8db8dcc514e812a09d41e",
+    "differences": []
+  },
+  "orm": {
+    "baseline_table_count": 39,
+    "current_table_count": 39,
+    "raw_exactly_identical": false,
+    "business_signature_identical": true,
+    "baseline_sha256": "16a4109e1dfb93be3037acffaac138036011659091e0fd6c2cd18c24a14128a5",
+    "current_sha256": "af4a727f6d93eb92f7ac1d9e41fe0a4aa28b46dcc2cb11bcc7a122beeae6d042",
+    "normalized_baseline_sha256": "af4a727f6d93eb92f7ac1d9e41fe0a4aa28b46dcc2cb11bcc7a122beeae6d042",
+    "normalized_current_sha256": "af4a727f6d93eb92f7ac1d9e41fe0a4aa28b46dcc2cb11bcc7a122beeae6d042",
+    "normalization": "仅把 callable.__module__ 里的 app.modules.<owner> 前缀规范为 studio_<owner>；不忽略列/default/onupdate/索引/约束字段",
+    "raw_differences": [
+      {
+        "path": "/agent_runs/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/agent_runs/columns/19/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/agent_runs/columns/20/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/agent_runs/columns/20/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/asset_versions/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/asset_versions/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/asset_versions/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/asset_versions/columns/9/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/assets/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/assets/columns/15/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/assets/columns/16/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/assets/columns/16/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/audio_tracks/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/audio_tracks/columns/18/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/audio_tracks/columns/19/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/audio_tracks/columns/19/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/budget_events/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/budget_events/columns/6/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/budget_events/columns/7/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/budget_events/columns/7/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_assets/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_assets/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_assets/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_assets/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_costumes/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_costumes/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_costumes/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_costumes/columns/10/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_profiles/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_profiles/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_profiles/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_profiles/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_relationships/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_relationships/columns/7/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_relationships/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_relationships/columns/8/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_states/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_states/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_states/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_states/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_voices/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/character_voices/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_voices/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/character_voices/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/characters/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/characters/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/characters/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/characters/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/config_versions/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/config_versions/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/config_versions/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/config_versions/columns/10/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/directing_plans/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/directing_plans/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/directing_plans/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/directing_plans/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/editing_projects/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/editing_projects/columns/14/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/editing_projects/columns/15/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/editing_projects/columns/15/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_results/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/evaluation_results/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_results/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_results/columns/9/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_runs/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/evaluation_runs/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_runs/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/evaluation_runs/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/model_call_logs/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/model_call_logs/columns/14/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/model_call_logs/columns/15/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/model_call_logs/columns/15/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/project_members/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/project_members/columns/4/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/project_members/columns/5/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/project_members/columns/5/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/projects/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/projects/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/projects/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/projects/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/prompt_versions/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/prompt_versions/columns/5/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/prompt_versions/columns/6/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/prompt_versions/columns/6/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/review_comments/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/review_comments/columns/5/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/review_comments/columns/6/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/review_comments/columns/6/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/reviews/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/reviews/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/reviews/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/reviews/columns/12/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_assets/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/scene_assets/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_assets/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_assets/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_profiles/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/scene_profiles/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_profiles/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scene_profiles/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scenes/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/scenes/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scenes/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scenes/columns/10/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scripts/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/scripts/columns/16/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scripts/columns/17/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/scripts/columns/17/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shot_characters/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/shot_characters/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shot_characters/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shot_characters/columns/9/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shots/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/shots/columns/20/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shots/columns/21/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/shots/columns/21/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/source_documents/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/source_documents/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/source_documents/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/source_documents/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_chapters/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/story_chapters/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_chapters/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_chapters/columns/9/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_events/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/story_events/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_events/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/story_events/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/storyboards/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/storyboards/columns/12/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/storyboards/columns/13/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/storyboards/columns/13/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/task_events/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/task_events/columns/8/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/task_events/columns/9/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/task_events/columns/9/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/tasks/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/tasks/columns/17/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/tasks/columns/18/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/tasks/columns/18/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/users/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/users/columns/5/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/users/columns/6/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/users/columns/6/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/video_generations/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/video_generations/columns/18/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/video_generations/columns/19/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/video_generations/columns/19/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_checkpoints/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/workflow_checkpoints/columns/10/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_checkpoints/columns/11/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_checkpoints/columns/11/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_runs/columns/0/default/arg/module",
+        "baseline": "app.modules.platform.persistence.base",
+        "current": "studio_platform.persistence.base"
+      },
+      {
+        "path": "/workflow_runs/columns/14/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_runs/columns/15/default/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      },
+      {
+        "path": "/workflow_runs/columns/15/onupdate/arg/module",
+        "baseline": "app.modules.platform.ids",
+        "current": "studio_platform.ids"
+      }
+    ],
+    "remaining_differences": [],
+    "coverage": [
+      "表名",
+      "列名与顺序",
+      "SQL 类型与类型类名",
+      "nullable",
+      "primary_key",
+      "unique",
+      "index",
+      "autoincrement",
+      "default（含 callable bytecode、常量、闭包与默认参数）",
+      "onupdate",
+      "server_default",
+      "server_onupdate",
+      "列注释",
+      "约束类型/名/列/deferrable/initially",
+      "外键目标/ondelete/onupdate/use_alter/match",
+      "索引名/唯一性/表达式/dialect kwargs"
+    ]
+  },
+  "workspace": {
+    "member_count": 13,
+    "expected_count": 13,
+    "members": {
+      "studio-api": {
+        "path": "apps/studio_api",
+        "module": "studio_api",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-assets",
+          "studio-characters",
+          "studio-configuration",
+          "studio-contracts",
+          "studio-platform",
+          "studio-production",
+          "studio-projects",
+          "studio-reviews",
+          "studio-scenes",
+          "studio-story",
+          "studio-workflow"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "fastapi>=0.115",
+          "pydantic>=2.7",
+          "python-multipart>=0.0.9",
+          "starlette>=0.37",
+          "studio-ai-runtime==1.0.0",
+          "studio-assets==1.0.0",
+          "studio-characters==1.0.0",
+          "studio-configuration==1.0.0",
+          "studio-contracts==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-production==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-reviews==1.0.0",
+          "studio-scenes==1.0.0",
+          "studio-story==1.0.0",
+          "studio-workflow==1.0.0",
+          "uvicorn[standard]>=0.30"
+        ]
+      },
+      "studio-configuration": {
+        "path": "packages/studio_configuration",
+        "module": "studio_configuration",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-platform"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "studio-platform==1.0.0"
+        ]
+      },
+      "studio-projects": {
+        "path": "packages/studio_projects",
+        "module": "studio_projects",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-contracts",
+          "studio-platform"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "studio-contracts==1.0.0",
+          "studio-platform==1.0.0"
+        ]
+      },
+      "studio-platform": {
+        "path": "packages/studio_platform",
+        "module": "studio_platform",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-contracts"
+        ],
+        "raw_dependencies": [
+          "PyYAML>=6.0",
+          "SQLAlchemy>=2.0",
+          "fastapi>=0.115",
+          "pydantic>=2.7",
+          "studio-contracts==1.0.0"
+        ]
+      },
+      "studio-scenes": {
+        "path": "packages/studio_scenes",
+        "module": "studio_scenes",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-platform",
+          "studio-projects",
+          "studio-story"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "pydantic>=2.7",
+          "studio-ai-runtime==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-story==1.0.0"
+        ]
+      },
+      "studio-assets": {
+        "path": "packages/studio_assets",
+        "module": "studio_assets",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-platform"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "studio-platform==1.0.0"
+        ]
+      },
+      "studio-ai-runtime": {
+        "path": "packages/studio_ai_runtime",
+        "module": "studio_ai_runtime",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-contracts",
+          "studio-platform",
+          "studio-projects"
+        ],
+        "raw_dependencies": [
+          "Pillow>=10.0",
+          "SQLAlchemy>=2.0",
+          "httpx>=0.27",
+          "pydantic>=2.7",
+          "studio-contracts==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-projects==1.0.0"
+        ]
+      },
+      "studio-workflow": {
+        "path": "packages/studio_workflow",
+        "module": "studio_workflow",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-characters",
+          "studio-platform",
+          "studio-production",
+          "studio-projects",
+          "studio-reviews",
+          "studio-scenes",
+          "studio-story"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "pydantic>=2.7",
+          "studio-ai-runtime==1.0.0",
+          "studio-characters==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-production==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-reviews==1.0.0",
+          "studio-scenes==1.0.0",
+          "studio-story==1.0.0"
+        ]
+      },
+      "studio-characters": {
+        "path": "packages/studio_characters",
+        "module": "studio_characters",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-assets",
+          "studio-platform",
+          "studio-projects",
+          "studio-story"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "pydantic>=2.7",
+          "studio-ai-runtime==1.0.0",
+          "studio-assets==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-story==1.0.0"
+        ]
+      },
+      "studio-production": {
+        "path": "packages/studio_production",
+        "module": "studio_production",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-assets",
+          "studio-characters",
+          "studio-platform",
+          "studio-projects",
+          "studio-scenes",
+          "studio-story"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "pydantic>=2.7",
+          "studio-ai-runtime==1.0.0",
+          "studio-assets==1.0.0",
+          "studio-characters==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-scenes==1.0.0",
+          "studio-story==1.0.0"
+        ]
+      },
+      "studio-contracts": {
+        "path": "packages/studio_contracts",
+        "module": "studio_contracts",
+        "version": "1.0.0",
+        "dependencies": [],
+        "raw_dependencies": [
+          "pydantic>=2.7"
+        ]
+      },
+      "studio-story": {
+        "path": "packages/studio_story",
+        "module": "studio_story",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-ai-runtime",
+          "studio-assets",
+          "studio-platform",
+          "studio-projects"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "pydantic>=2.7",
+          "python-docx>=1.1",
+          "studio-ai-runtime==1.0.0",
+          "studio-assets==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-projects==1.0.0"
+        ]
+      },
+      "studio-reviews": {
+        "path": "packages/studio_reviews",
+        "module": "studio_reviews",
+        "version": "1.0.0",
+        "dependencies": [
+          "studio-characters",
+          "studio-platform",
+          "studio-production",
+          "studio-projects",
+          "studio-scenes",
+          "studio-story"
+        ],
+        "raw_dependencies": [
+          "SQLAlchemy>=2.0",
+          "studio-characters==1.0.0",
+          "studio-platform==1.0.0",
+          "studio-production==1.0.0",
+          "studio-projects==1.0.0",
+          "studio-scenes==1.0.0",
+          "studio-story==1.0.0"
+        ]
+      }
+    },
+    "modules_match_plan": true,
+    "missing_modules": [],
+    "extra_modules": [],
+    "dependency_cycles": [],
+    "undeclared_canonical_imports": [],
+    "incompatible_local_versions": [],
+    "all_members_use_src_layout": true,
+    "single_lockfile": true
+  },
+  "passed": true
+}

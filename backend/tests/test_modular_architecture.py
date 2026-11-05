@@ -8,14 +8,20 @@ from __future__ import annotations
 
 import ast
 import importlib
+import re
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULES = ROOT / "backend" / "app" / "modules"
+PACKAGES = ROOT / "packages"
+MODULES = {
+    path.name.removeprefix("studio_"): path / "src" / path.name for path in sorted(PACKAGES.glob("studio_*"))
+}
+APPLICATION = ROOT / "apps" / "studio_api" / "src" / "studio_api"
 TECHNICAL_MODULES = {"platform", "ai_runtime", "contracts"}
 # 这些是有意开放的技术命名接口，不允许任意跨入其他内部文件。
 TECHNICAL_INTERFACES = {
@@ -50,6 +56,8 @@ TECHNICAL_INTERFACES = {
     "contracts": {"public"},
 }
 LEGACY_PREFIXES = (
+    "app",
+    "studio_api",
     "app.services",
     "app.core",
     "app.agents",
@@ -58,21 +66,21 @@ LEGACY_PREFIXES = (
     "app.db",
 )
 COMPATIBLE_MODULES = (
-    ("app.core.settings", "app.modules.platform.configuration.settings"),
-    ("app.core.config_models", "app.modules.platform.configuration.config_models"),
-    ("app.core.config_store", "app.modules.platform.configuration.config_store"),
-    ("app.db.session", "app.modules.platform.persistence.session"),
-    ("app.models.base", "app.modules.platform.persistence.base"),
-    ("app.models.character", "app.modules.characters.infrastructure.persistence.models"),
-    ("app.models.scene", "app.modules.scenes.infrastructure.persistence.models"),
-    ("app.models.production", "app.modules.production.infrastructure.persistence.models"),
-    ("app.models.story", "app.modules.story.infrastructure.persistence.models"),
-    ("app.services.agent_runner", "app.modules.ai_runtime.application.execution"),
-    ("app.providers.registry", "app.modules.ai_runtime.providers.registry"),
-    ("app.agents.registry", "app.modules.ai_runtime.registry"),
-    ("app.services.workflow", "app.modules.workflow.application.engine"),
-    ("app.services.reviews", "app.modules.reviews.application.service"),
-    ("app.services.documents", "app.modules.story.application.documents"),
+    ("app.core.settings", "studio_platform.configuration.settings"),
+    ("app.core.config_models", "studio_platform.configuration.config_models"),
+    ("app.core.config_store", "studio_platform.configuration.config_store"),
+    ("app.db.session", "studio_platform.persistence.session"),
+    ("app.models.base", "studio_platform.persistence.base"),
+    ("app.models.character", "studio_characters.infrastructure.persistence.models"),
+    ("app.models.scene", "studio_scenes.infrastructure.persistence.models"),
+    ("app.models.production", "studio_production.infrastructure.persistence.models"),
+    ("app.models.story", "studio_story.infrastructure.persistence.models"),
+    ("app.services.agent_runner", "studio_ai_runtime.application.execution"),
+    ("app.providers.registry", "studio_ai_runtime.providers.registry"),
+    ("app.agents.registry", "studio_ai_runtime.registry"),
+    ("app.services.workflow", "studio_workflow.application.engine"),
+    ("app.services.reviews", "studio_reviews.application.service"),
+    ("app.services.documents", "studio_story.application.documents"),
 )
 
 
@@ -94,7 +102,12 @@ class ImportReference:
 
 
 def python_module(path: Path) -> str:
-    parts = list(path.relative_to(ROOT / "backend").with_suffix("").parts)
+    source_root = next(
+        (root.parent for root in (*MODULES.values(), APPLICATION) if path.is_relative_to(root)), None
+    )
+    if source_root is None:
+        raise ValueError(f"不是工作区成员源码：{path}")
+    parts = list(path.relative_to(source_root).with_suffix("").parts)
     if parts[-1] == "__init__":
         parts.pop()
     return ".".join(parts)
@@ -137,22 +150,87 @@ def import_references(path: Path) -> list[ImportReference]:
             )
             if direct_loader or qualified_loader:
                 references.append(ImportReference(path, node.lineno, value))
+        elif (
+            isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "_EXPORTS" for target in node.targets)
+            and isinstance(node.value, ast.Dict)
+        ):
+            # 惰性公开导出也属于依赖；只扫描 import 语句会漏掉 public 的真实装配。
+            for value in node.value.values:
+                if isinstance(value, (ast.Tuple, ast.List)) and value.elts:
+                    module_name = value.elts[0]
+                    if isinstance(module_name, ast.Constant) and isinstance(module_name.value, str):
+                        references.append(ImportReference(path, module_name.lineno, module_name.value))
     return references
 
 
 def module_sources() -> list[Path]:
-    files = sorted(MODULES.rglob("*.py"))
+    files = sorted(path for root in MODULES.values() for path in root.rglob("*.py"))
     assert files, "模块源码不存在，架构检查不能空执行"
     return files
 
 
+def declared_distributions(manifest: Path) -> set[str]:
+    """读取成员清单的直接依赖与可选依赖；不把工作区的传递依赖视为已声明。"""
+    data = tomllib.loads(manifest.read_text(encoding="utf-8"))
+    dependencies = list(data["project"].get("dependencies", ()))
+    for optional in data["project"].get("optional-dependencies", {}).values():
+        dependencies.extend(optional)
+    return {
+        re.sub(r"[-_.]+", "-", re.match(r"[A-Za-z0-9][A-Za-z0-9_.-]*", requirement)[0]).lower()
+        for requirement in dependencies
+    }
+
+
+def test_workspace_manifests_declare_direct_source_dependencies():
+    """每个真实包独立声明源码导入依赖；不借助根项目环境隐藏遗漏。"""
+    import_to_distribution = {
+        "PIL": "pillow",
+        "docx": "python-docx",
+        "yaml": "pyyaml",
+        "sqlalchemy": "sqlalchemy",
+        "fastapi": "fastapi",
+        "starlette": "starlette",
+        "pydantic": "pydantic",
+        "httpx": "httpx",
+        "uvicorn": "uvicorn",
+        "pypdf": "pypdf",
+        "boto3": "boto3",
+    }
+    violations = []
+    for source_root in (*MODULES.values(), APPLICATION):
+        manifest = source_root.parents[1] / "pyproject.toml"
+        assert manifest.is_file(), f"缺少 workspace 成员清单：{manifest}"
+        declared = declared_distributions(manifest)
+        own_namespace = source_root.name
+        for path in sorted(source_root.rglob("*.py")):
+            for reference in import_references(path):
+                namespace = reference.module.split(".", 1)[0]
+                if (
+                    namespace == own_namespace
+                    or (own_namespace == "studio_api" and namespace == "app")
+                    or namespace in sys.stdlib_module_names
+                    or namespace == "__future__"
+                ):
+                    continue
+                distribution = (
+                    namespace.replace("_", "-")
+                    if namespace.startswith("studio_")
+                    else import_to_distribution.get(namespace)
+                )
+                assert distribution is not None, f"未识别的外部导入，需要声明对应分发：{reference.explain()}"
+                if distribution not in declared:
+                    violations.append(f"{reference.explain()}（清单缺少 {distribution}）")
+    assert not violations, "成员遗漏直接包依赖：\n" + "\n".join(violations)
+
+
 def owner_of(name: str) -> str | None:
     parts = name.split(".")
-    return parts[2] if len(parts) >= 3 and parts[:2] == ["app", "modules"] else None
+    return parts[0].removeprefix("studio_") if parts[0].startswith("studio_") else None
 
 
 def is_public_target(reference: ImportReference, destination: str) -> bool:
-    prefix = f"app.modules.{destination}."
+    prefix = f"studio_{destination}."
     if reference.member and reference.member.startswith("_"):
         return False
     entries = []
@@ -161,7 +239,7 @@ def is_public_target(reference: ImportReference, destination: str) -> bool:
         entries.append(entry)
         if reference.member and reference.member != "*":
             entries.append(f"{entry}.{reference.member}")
-    elif reference.module == f"app.modules.{destination}" and reference.member:
+    elif reference.module == f"studio_{destination}" and reference.member:
         entries.append(reference.member)
     if destination in TECHNICAL_MODULES:
         return any(entry in TECHNICAL_INTERFACES[destination] for entry in entries)
@@ -180,11 +258,19 @@ def test_legacy_entrypoints_keep_the_same_module_object(legacy, canonical):
     assert importlib.import_module(legacy) is importlib.import_module(canonical)
 
 
+@pytest.mark.parametrize(("legacy", "canonical"), COMPATIBLE_MODULES)
+def test_previous_logical_module_paths_share_canonical_objects(legacy, canonical):
+    namespace, separator, suffix = canonical.partition(".")
+    assert separator and namespace.startswith("studio_")
+    old_module = f"app.modules.{namespace.removeprefix('studio_')}.{suffix}"
+    assert importlib.import_module(old_module) is importlib.import_module(canonical)
+
+
 def test_orm_metadata_and_agent_catalog_have_single_sources():
     from app import models
-    from app.bootstrap.agent_catalog import AGENT_FAMILIES, builtin_agent_classes
-    from app.modules.ai_runtime.registry import AGENT_CLASSES, agent_ids
-    from app.modules.platform.persistence.base import Base
+    from studio_ai_runtime.registry import AGENT_CLASSES, agent_ids
+    from studio_api.bootstrap.agent_catalog import AGENT_FAMILIES, builtin_agent_classes
+    from studio_platform.persistence.base import Base
 
     assert models.Base is Base
     mapped = {
@@ -192,14 +278,14 @@ def test_orm_metadata_and_agent_catalog_have_single_sources():
         for cls in vars(models).values()
         if isinstance(cls, type) and hasattr(cls, "__table__") and issubclass(cls, Base)
     }
-    assert len(mapped) >= 20, "没有完整注册业务映射，不能只验证一个空Base"
+    assert len(mapped) == 39, "必须完整注册 39 张业务映射，不能只验证空 Base 或映射子集"
     assert {"projects", "scripts", "characters", "scenes", "reviews", "agent_runs"} <= set(
         Base.metadata.tables
     )
     assert len({cls.__table__.fullname for cls in mapped}) == len(mapped)
     assert all(cls.__table__.metadata is Base.metadata for cls in mapped)
     assert all(Base.metadata.tables[cls.__table__.fullname] is cls.__table__ for cls in mapped)
-    assert all(cls.__module__.startswith("app.modules.") for cls in mapped)
+    assert all(cls.__module__.startswith("studio_") for cls in mapped)
 
     ids = agent_ids()
     flattened = [agent_id for family in AGENT_FAMILIES.values() for agent_id in family]
@@ -209,7 +295,7 @@ def test_orm_metadata_and_agent_catalog_have_single_sources():
     for agent_id, implementation in builtin_agent_classes().items():
         assert AGENT_CLASSES[agent_id] is implementation
         assert implementation.agent_id == agent_id
-        assert implementation.__module__.startswith("app.modules.")
+        assert implementation.__module__.startswith("studio_")
 
 
 def test_legacy_model_aggregators_reexport_the_canonical_classes():
@@ -233,38 +319,38 @@ def test_legacy_model_aggregators_reexport_the_canonical_classes():
         PromptVersion,
         User,
     )
-    from app.modules.ai_runtime.infrastructure.persistence.models import AgentRun as CanonicalAgentRun
-    from app.modules.ai_runtime.infrastructure.persistence.models import (
+    from studio_ai_runtime.infrastructure.persistence.models import AgentRun as CanonicalAgentRun
+    from studio_ai_runtime.infrastructure.persistence.models import (
         BudgetEvent as CanonicalBudgetEvent,
     )
-    from app.modules.ai_runtime.infrastructure.persistence.models import (
+    from studio_ai_runtime.infrastructure.persistence.models import (
         ModelCallLog as CanonicalModelCallLog,
     )
-    from app.modules.assets.infrastructure.persistence.models import Asset as CanonicalAsset
-    from app.modules.assets.infrastructure.persistence.models import (
+    from studio_assets.infrastructure.persistence.models import Asset as CanonicalAsset
+    from studio_assets.infrastructure.persistence.models import (
         AssetVersion as CanonicalAssetVersion,
     )
-    from app.modules.configuration.infrastructure.persistence.models import (
+    from studio_configuration.infrastructure.persistence.models import (
         ConfigVersion as CanonicalConfigVersion,
     )
-    from app.modules.configuration.infrastructure.persistence.models import (
+    from studio_configuration.infrastructure.persistence.models import (
         PromptVersion as CanonicalPromptVersion,
     )
-    from app.modules.platform.persistence.models import Task as CanonicalTask
-    from app.modules.platform.persistence.models import TaskEvent as CanonicalTaskEvent
-    from app.modules.projects.infrastructure.persistence.models import Project as CanonicalProject
-    from app.modules.projects.infrastructure.persistence.models import (
+    from studio_platform.persistence.models import Task as CanonicalTask
+    from studio_platform.persistence.models import TaskEvent as CanonicalTaskEvent
+    from studio_projects.infrastructure.persistence.models import Project as CanonicalProject
+    from studio_projects.infrastructure.persistence.models import (
         ProjectMember as CanonicalProjectMember,
     )
-    from app.modules.projects.infrastructure.persistence.models import User as CanonicalUser
-    from app.modules.reviews.infrastructure.persistence.models import Review as CanonicalReview
-    from app.modules.reviews.infrastructure.persistence.models import (
+    from studio_projects.infrastructure.persistence.models import User as CanonicalUser
+    from studio_reviews.infrastructure.persistence.models import Review as CanonicalReview
+    from studio_reviews.infrastructure.persistence.models import (
         ReviewComment as CanonicalReviewComment,
     )
-    from app.modules.workflow.infrastructure.persistence.models import (
+    from studio_workflow.infrastructure.persistence.models import (
         WorkflowCheckpoint as CanonicalWorkflowCheckpoint,
     )
-    from app.modules.workflow.infrastructure.persistence.models import WorkflowRun as CanonicalWorkflowRun
+    from studio_workflow.infrastructure.persistence.models import WorkflowRun as CanonicalWorkflowRun
 
     pairs = (
         (AgentRun, CanonicalAgentRun),
@@ -288,12 +374,12 @@ def test_legacy_model_aggregators_reexport_the_canonical_classes():
 
 
 def test_legacy_production_media_module_reexports_split_flows():
-    from app.modules.production import public as production
-    from app.modules.production.application import media as legacy_media
-    from app.modules.production.application.audio import generate_audio
-    from app.modules.production.application.character_assets import generate_character_assets
-    from app.modules.production.application.editing import render_film
-    from app.modules.production.application.shot_video import generate_shot_videos
+    from studio_production import public as production
+    from studio_production.application import media as legacy_media
+    from studio_production.application.audio import generate_audio
+    from studio_production.application.character_assets import generate_character_assets
+    from studio_production.application.editing import render_film
+    from studio_production.application.shot_video import generate_shot_videos
 
     assert legacy_media.generate_character_assets is generate_character_assets
     assert legacy_media.generate_shot_videos is generate_shot_videos
@@ -362,14 +448,18 @@ def test_new_modules_do_not_import_legacy_implementation_entrypoints():
 
 
 def test_domain_rules_use_only_standard_library_and_their_own_domain():
-    domains = [path for path in module_sources() if "domain" in path.relative_to(MODULES).parts]
+    domains = [
+        path
+        for path in module_sources()
+        if "domain" in path.relative_to(MODULES[owner_of(python_module(path))]).parts
+    ]
     assert domains, "尚未提取任何领域规则，不能空执行领域依赖检查"
     violations = []
     for path in domains:
         owner = owner_of(python_module(path))
         for reference in import_references(path):
             dependency = reference.module.split(".", 1)[0]
-            own_domain = f"app.modules.{owner}.domain"
+            own_domain = f"studio_{owner}.domain"
             if dependency in sys.stdlib_module_names or dependency == "__future__":
                 continue
             if reference.target == own_domain or reference.target.startswith(own_domain + "."):
@@ -392,7 +482,7 @@ def test_business_modules_follow_standard_layer_package_layout():
         "configuration",
     )
     for name in business_modules:
-        module = MODULES / name
+        module = MODULES[name]
         for layer in ("domain", "application", "infrastructure", "interfaces"):
             assert (module / layer / "__init__.py").is_file(), f"{name} 缺少 {layer} 层"
         assert (module / "public.py").is_file(), f"{name} 缺少 public.py"
@@ -401,12 +491,12 @@ def test_business_modules_follow_standard_layer_package_layout():
 
 def test_agent_catalogs_are_owned_by_business_modules():
     """具体 Agent 类由业务模块声明，bootstrap 只做汇总，不再集中维护实现映射。"""
-    from app.bootstrap.agent_catalog import builtin_agent_classes
-    from app.modules.characters.infrastructure.agents.catalog import AGENTS as characters
-    from app.modules.production.infrastructure.agents.catalog import AGENTS as production
-    from app.modules.scenes.infrastructure.agents.catalog import AGENTS as scenes
-    from app.modules.story.infrastructure.agents.catalog import AGENTS as story
-    from app.modules.workflow.infrastructure.agents.catalog import AGENTS as workflow
+    from studio_api.bootstrap.agent_catalog import builtin_agent_classes
+    from studio_characters.infrastructure.agents.catalog import AGENTS as characters
+    from studio_production.infrastructure.agents.catalog import AGENTS as production
+    from studio_scenes.infrastructure.agents.catalog import AGENTS as scenes
+    from studio_story.infrastructure.agents.catalog import AGENTS as story
+    from studio_workflow.infrastructure.agents.catalog import AGENTS as workflow
 
     catalogs = (characters, production, scenes, story, workflow)
     ids = [agent_id for catalog in catalogs for agent_id in catalog]
@@ -415,4 +505,4 @@ def test_agent_catalogs_are_owned_by_business_modules():
     for catalog in catalogs:
         for agent_id, agent_class in catalog.items():
             assert agent_class.agent_id == agent_id
-            assert agent_class.__module__.startswith("app.modules.")
+            assert agent_class.__module__.startswith("studio_")

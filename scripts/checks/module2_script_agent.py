@@ -65,7 +65,6 @@ from typing import Any
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
 
 import httpx  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
@@ -74,18 +73,18 @@ from sqlalchemy.engine import make_url  # noqa: E402
 from app.models.ops import AgentRun, ModelCallLog  # noqa: E402
 from app.models.project import Project  # noqa: E402
 from app.models.story import Script, StoryEvent  # noqa: E402
-from app.modules.ai_runtime.base import AgentContext  # noqa: E402
-from app.modules.ai_runtime.providers import registry as provider_registry  # noqa: E402
-from app.modules.ai_runtime.providers.base import LLMResult  # noqa: E402
-from app.modules.ai_runtime.registry import create_agent  # noqa: E402
-from app.modules.platform.configuration.config_store import stable_checksum  # noqa: E402
-from app.modules.platform.configuration.settings import Settings, load_settings  # noqa: E402
-from app.modules.platform.execution.runtime import AppRuntime, build_runtime  # noqa: E402
-from app.modules.platform.execution.task_runner import reset_runner  # noqa: E402
-from app.modules.platform.persistence.session import init_engine, init_schema, reset_engine, session_scope  # noqa: E402
-from app.modules.projects import public as projects  # noqa: E402
-from app.modules.story import public as story_module  # noqa: E402
-from app.schemas.script import ScriptInput, ScriptOutput  # noqa: E402
+from studio_ai_runtime.base import AgentContext  # noqa: E402
+from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
+from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
+from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_platform.configuration.config_store import stable_checksum  # noqa: E402
+from studio_platform.configuration.settings import Settings, load_settings  # noqa: E402
+from studio_platform.execution.runtime import AppRuntime, build_runtime  # noqa: E402
+from studio_platform.execution.task_runner import reset_runner  # noqa: E402
+from studio_platform.persistence.session import init_engine, init_schema, reset_engine, session_scope  # noqa: E402
+from studio_projects import public as projects  # noqa: E402
+from studio_story import public as story_module  # noqa: E402
+from studio_story.contracts import ScriptInput, ScriptOutput  # noqa: E402
 
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 USER_ID = "user_check"
@@ -252,7 +251,7 @@ def build_sandbox(
     仅传 data_dir 不足以覆盖 DATABASE_URL、STORAGE_ROOT 和配置中的相对路径。
     环境中的模型强制覆盖必须置空而非删除，避免 .env 的 setdefault 再次注入。
     """
-    from app.bootstrap.composition import configure_application
+    from studio_api.bootstrap.composition import configure_application
 
     configure_application()
     sandbox = Path(tempfile.mkdtemp(prefix="studio_m2_")).resolve()

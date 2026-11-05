@@ -1,0 +1,18 @@
+{
+  "wheels": 13,
+  "source_path_absent": true,
+  "bundled_resources": true,
+  "tables": 39,
+  "agents": 17,
+  "schemas": 14,
+  "http_health_console": true,
+  "review_stages": [
+    "characters_scenes",
+    "storyboard",
+    "shots",
+    "final"
+  ],
+  "export_bytes": 70043,
+  "occupied_port_rejected": true,
+  "mode": "mock; non-editable wheels; isolated temporary database/storage; no standalone web server"
+}

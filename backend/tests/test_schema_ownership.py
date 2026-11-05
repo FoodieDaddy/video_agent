@@ -25,13 +25,13 @@ OWNERS = {
 @pytest.mark.parametrize("name,owner", OWNERS.items())
 def test_legacy_schema_import_uses_the_same_canonical_module(name, owner):
     old = importlib.import_module(f"app.schemas.{name}")
-    canonical = importlib.import_module(f"app.modules.{owner}.schemas.{name}")
+    canonical = importlib.import_module(f"studio_{owner}.schemas.{name}")
     assert old is canonical
 
 
 def test_schema_catalog_keeps_existing_exports_and_shared_registry(tmp_path):
-    from app.bootstrap.schema_catalog import register_schemas
-    from app.modules.ai_runtime import schema_registry
+    from studio_ai_runtime import schema_registry
+    from studio_api.bootstrap.schema_catalog import register_schemas
 
     register_schemas()
     old = importlib.import_module("app.schemas.registry")
@@ -50,11 +50,11 @@ def test_schema_catalog_keeps_existing_exports_and_shared_registry(tmp_path):
 def test_generic_registry_import_does_not_load_business_schema_modules():
     code = """
 import sys
-import app.modules.ai_runtime.schema_registry as registry
+import studio_ai_runtime.schema_registry as registry
 assert registry.OUTPUT_SCHEMAS == {}
 assert registry.SCHEMA_FILES == {}
-assert not any(name.startswith('app.modules.story') for name in sys.modules)
-assert not any(name.startswith('app.modules.production') for name in sys.modules)
-assert not any(name.startswith('app.bootstrap') for name in sys.modules)
+assert not any(name.startswith('studio_story') for name in sys.modules)
+assert not any(name.startswith('studio_production') for name in sys.modules)
+assert not any(name.startswith('studio_api') for name in sys.modules)
 """
     subprocess.run([sys.executable, "-c", code], check=True)

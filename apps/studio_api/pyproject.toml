@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "studio-api"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy>=2.0",
+    "fastapi>=0.115",
+    "pydantic>=2.7",
+    "python-multipart>=0.0.9",
+    "starlette>=0.37",
+    "studio-ai-runtime==1.0.0",
+    "studio-assets==1.0.0",
+    "studio-characters==1.0.0",
+    "studio-configuration==1.0.0",
+    "studio-contracts==1.0.0",
+    "studio-platform==1.0.0",
+    "studio-production==1.0.0",
+    "studio-projects==1.0.0",
+    "studio-reviews==1.0.0",
+    "studio-scenes==1.0.0",
+    "studio-story==1.0.0",
+    "studio-workflow==1.0.0",
+    "uvicorn[standard]>=0.30"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["studio_api*", "app*"]
+
+[tool.setuptools.package-data]
+studio_api = ["resources/**/*"]

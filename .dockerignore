@@ -1,4 +1,7 @@
 .git
+build
+dist
+.idea
 .venv
 venv
 __pycache__
@@ -9,8 +12,6 @@ __pycache__
 data
 docs
 task.md
-*.md
-!README.md
-*.png
+/*.png
 .env
 .env.*
