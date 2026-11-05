@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.platform.exceptions import ConflictError, NotFoundError
+from app.modules.story.contracts import ScriptBaselineReference
 from app.modules.story.domain.script_baseline import (
     build_script_fingerprint_input,
     script_text_of_content,
@@ -78,16 +79,10 @@ def script_fingerprint(script: Script) -> str:
     return fingerprint_script_input(value)
 
 
-def assert_script_baseline(db: Session, project_id: str, script_id: str, fingerprint: str | None) -> Script:
-    """确认最新稿仍是记录时的同一业务内容，失败时要求重新开始流程。
-
-    Raises:
-        ConflictError: 旧流程未记录指纹、项目最新版本不同，或原位修改改变了业务内容。
-
-    Notes:
-        调用方先完成项目授权。查询刷新已有 ORM 缓存，不写入、不提交，不撤销历史
-        资产或批准。没有指纹的旧完整流程不能补算当前指纹冒充原始基线。
-    """
+def _matching_script_baseline(
+    db: Session, project_id: str, script_id: str, fingerprint: str | None
+) -> tuple[Script, str]:
+    """读取并校验最新剧本，返回当前 ORM 行和已计算指纹。"""
     if not isinstance(fingerprint, str) or not fingerprint:
         raise ConflictError(
             "当前工作流缺少剧本基线指纹，无法确认旧稿安全，请取消旧流程后重新开始",
@@ -109,12 +104,40 @@ def assert_script_baseline(db: Session, project_id: str, script_id: str, fingerp
             "剧本版本已更新，当前工作流基于旧稿，请取消旧流程后重新开始",
             details={**details, "reason": "script_version_changed"},
         )
-    if script_fingerprint(current) != fingerprint:
+    current_fingerprint = script_fingerprint(current)
+    if current_fingerprint != fingerprint:
         raise ConflictError(
             "剧本正文或结构已更新，当前工作流基于旧稿，请取消旧流程后重新开始",
             details={**details, "reason": "script_content_changed"},
         )
+    return current, current_fingerprint
+
+
+def assert_script_baseline(db: Session, project_id: str, script_id: str, fingerprint: str | None) -> Script:
+    """兼容接口：校验最新稿基线并返回当前 ORM 行。
+
+    Raises:
+        ConflictError: 旧流程未记录指纹、项目最新版本不同，或原位修改改变了业务内容。
+
+    Notes:
+        调用方先完成项目授权。查询刷新已有 ORM 缓存，不写入、不提交，不撤销历史
+        资产或批准。没有指纹的旧完整流程不能补算当前指纹冒充原始基线。
+    """
+    current, _ = _matching_script_baseline(db, project_id, script_id, fingerprint)
     return current
+
+
+def assert_script_baseline_reference(
+    db: Session, project_id: str, script_id: str, fingerprint: str | None
+) -> ScriptBaselineReference:
+    """校验剧本基线并返回不含 ORM 实体的 DTO，供 workflow/reviews 等跨模块调用。"""
+    current, current_fingerprint = _matching_script_baseline(db, project_id, script_id, fingerprint)
+    return ScriptBaselineReference(
+        project_id=current.project_id,
+        script_id=current.id,
+        version=current.version,
+        fingerprint=current_fingerprint,
+    )
 
 
 def get_project_script(db: Session, project_id: str, script_id: str) -> Script:

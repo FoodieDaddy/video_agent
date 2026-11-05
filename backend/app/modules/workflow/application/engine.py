@@ -167,7 +167,7 @@ class WorkflowEngine:
         outputs = (run.state or {}).get("outputs") or {}
         for output in outputs.values():
             if isinstance(output, dict) and output.get("script_id"):
-                story.assert_script_baseline(
+                story.assert_script_baseline_reference(
                     db, project.id, output["script_id"], output.get("script_fingerprint")
                 )
         run.status = WorkflowStatus.RUNNING.value

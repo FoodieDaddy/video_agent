@@ -245,7 +245,7 @@ def decide(
         # 直接依赖 story 的公开校验，不通过 workflow 引擎形成模块反向依赖。
         for output in ((run.state or {}).get("outputs") or {}).values():
             if isinstance(output, dict) and output.get("script_id"):
-                story_module.assert_script_baseline(
+                story_module.assert_script_baseline_reference(
                     db, project.id, output["script_id"], output.get("script_fingerprint")
                 )
 

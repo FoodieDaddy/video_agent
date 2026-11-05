@@ -22,6 +22,7 @@ from app.modules.platform.persistence.base import Base
 from app.modules.projects.public import create_project
 from app.modules.reviews.application import service as reviews
 from app.modules.story import public as story
+from app.modules.story.contracts import ScriptBaselineReference
 from app.modules.workflow.application.engine import WorkflowEngine
 from app.modules.workflow.application.handlers import HandlerContext, handle_script
 
@@ -117,6 +118,26 @@ def test_public_assertion_refreshes_cached_orm_content(db, project):
     )
     with pytest.raises(ConflictError, match="正文或结构已更新"):
         story.assert_script_baseline(db, project.id, script.id, expected)
+
+
+def test_cross_module_baseline_reference_returns_dto_and_keeps_same_guard(db, project):
+    script = save(db, project)
+    expected = story.script_fingerprint(script)
+
+    reference = story.assert_script_baseline_reference(db, project.id, script.id, expected)
+
+    assert isinstance(reference, ScriptBaselineReference)
+    assert (reference.project_id, reference.script_id, reference.version, reference.fingerprint) == (
+        project.id,
+        script.id,
+        script.version,
+        expected,
+    )
+    assert not hasattr(reference, "__table__")
+
+    story.update_script(db, script=script, content={**script.content, "script_text": "新正文"})
+    with pytest.raises(ConflictError, match="正文或结构已更新"):
+        story.assert_script_baseline_reference(db, project.id, script.id, expected)
 
 
 @pytest.mark.parametrize("change", ["new_version", "legacy_patch", "missing_fingerprint"])

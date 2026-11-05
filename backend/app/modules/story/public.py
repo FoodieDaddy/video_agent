@@ -11,6 +11,10 @@ _EXPORTS = {
     "script_text_of": ("app.modules.story.application.queries", "script_text_of"),
     "script_fingerprint": ("app.modules.story.application.queries", "script_fingerprint"),
     "assert_script_baseline": ("app.modules.story.application.queries", "assert_script_baseline"),
+    "assert_script_baseline_reference": (
+        "app.modules.story.application.queries",
+        "assert_script_baseline_reference",
+    ),
     "get_project_script": ("app.modules.story.application.queries", "get_project_script"),
     "list_script_versions": ("app.modules.story.application.queries", "list_script_versions"),
     "create_script_version": ("app.modules.story.application.workspace", "create_script_version"),
