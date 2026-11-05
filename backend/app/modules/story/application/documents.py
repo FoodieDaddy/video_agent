@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.project import Asset, Project
-from app.modules.assets.public import save_asset
+from app.modules.assets.public import save_asset_reference
 from app.modules.platform import storage as storage_utils
 from app.modules.platform.constants import AssetKind, ProjectStatus
 from app.modules.platform.exceptions import NotFoundError, ValidationAppError
@@ -138,7 +138,7 @@ def store_document(
         raise ValidationAppError("上传内容为空")
     filename = filename or "novel.txt"
     extension = Path(filename).suffix or ".txt"
-    asset = save_asset(
+    asset = save_asset_reference(
         db,
         runtime,
         project_id=project.id,
@@ -154,7 +154,7 @@ def store_document(
         project_id=project.id,
         filename=filename,
         content_type=content_type or asset.mime_type,
-        asset_id=asset.id,
+        asset_id=asset.asset_id,
         size_bytes=len(content),
         status="uploaded",
         created_by=user_id,

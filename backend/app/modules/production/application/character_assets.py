@@ -120,7 +120,7 @@ async def generate_character_assets(
             if not content:
                 failures.append({"character": character.name, "kind": kind, "error": "provider 未返回图片"})
                 continue
-            asset = asset_service.save_asset(
+            asset = asset_service.save_asset_reference(
                 db,
                 runtime,
                 project_id=project.id,
@@ -142,7 +142,7 @@ async def generate_character_assets(
                     id=new_id("casset"),
                     project_id=project.id,
                     character_id=character.id,
-                    asset_id=asset.id,
+                    asset_id=asset.asset_id,
                     kind=kind,
                     version=version,
                     approved=False,
@@ -159,7 +159,7 @@ async def generate_character_assets(
             asset_service.record_asset_version(
                 db,
                 project_id=project.id,
-                asset_id=asset.id,
+                asset_id=asset.asset_id,
                 entity_type="character_asset",
                 entity_id=character.id,
                 version=version,
@@ -168,7 +168,7 @@ async def generate_character_assets(
             )
             if kind == "portrait":
                 reference_bytes = content
-                parent_asset_id = asset.id
+                parent_asset_id = asset.asset_id
             created += 1
         db.flush()
 

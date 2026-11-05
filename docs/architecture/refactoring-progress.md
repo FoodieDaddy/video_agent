@@ -2,7 +2,7 @@
 
 - 日期：2026 年 11 月 5 日
 - 当前分支：`codex/normalize-project-structure`
-- 状态：逻辑模块化、工作流定义快照、39 个 ORM 映射归属、production/media 拆分和 story→workflow/reviews 基线 DTO 已落地；其余仓储/DTO 边界与 workspace 仍在后续阶段
+- 状态：逻辑模块化、工作流定义快照、39 个 ORM 映射归属、production/media 拆分，以及 story 与 asset 的首批 DTO 边界已落地；其余仓储/DTO 边界与 workspace 仍在后续阶段
 
 本批按[改动说明](modular-monolith-refactoring-proposal.md)推进业务分包，保留原有运行方式和业务行为。当前仍是 `backend/app` 下的模块化单体，目标中的 `apps`、`packages`、独立成员 `pyproject.toml` 和 workspace 尚未建立。
 
@@ -80,7 +80,7 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 
 ## 后续阶段
 
-1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已进入 domain，workflow/reviews 已消费基线 DTO，其他应用接口仍保留原 Session/ORM 契约。
+1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已进入 domain，workflow/reviews 和部分资产写入已消费 DTO，其他应用接口仍保留原 Session/ORM 契约。
 2. 业务 ORM 映射已归入所属模块并保留共享 Base；继续迁移仓储、DTO 与跨模块查询，再逐步收拢 `app.models` 聚合注册。
 3. production/media 已按人物资产、镜头视频、配音字幕、剪辑渲染和质量首轮拆分；后续保持职责边界并避免重新聚合成大文件。
 4. 模块边界稳定后再迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
@@ -135,3 +135,11 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 - 保持异常类型、错误文本、状态检查顺序和事务责任；只增加返回 DTO 的公开入口。
 
 本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 311 项通过，含旧 baseline ORM 接口、DTO 返回、工作流恢复和审核路径回归；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock，没有启动网页服务或调用真实模型。
+
+## 第八批：跨模块资产引用 DTO
+
+- `assets/contracts.py` 新增不可变 `AssetReference`，包含 asset ID、project ID、类型、存储键、MIME 类型和字节数，不暴露 SQLAlchemy Asset 行。
+- 新增 `save_asset_reference()`，内部复用现有资产写入和 flush 流程；story 文档、人物图片、镜头视频、配音与字幕生成已迁到该返回契约。
+- `save_asset()` 仍保留原 ORM 返回，成片渲染和导出等尚未迁移的调用方暂沿用旧接口；文件写入、数据库事务与补偿语义不变。
+
+本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 312 项通过，含 AssetReference 持久化与消费者回归；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock，没有启动网页服务或调用真实模型。

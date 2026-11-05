@@ -19,6 +19,7 @@
 - `infrastructure/`：SQLAlchemy 持久化适配、外部服务适配和本模块 Agent 实现。
 - `interfaces/`：HTTP/API、CLI 等输入输出适配；只做参数校验、身份上下文转换和用例调用。
 - `contracts.py`：跨模块稳定的数据契约；不得暴露内部 ORM 实体作为长期跨模块协议。
+- 新资产写入跨模块优先使用 `save_asset_reference()` 返回不可变 `AssetReference`；旧 `save_asset()` 保留 ORM 返回给暂未迁移的调用方。
 - `public.py`：唯一跨业务模块入口；其他模块禁止导入本模块的内部目录。
 
 目前部分历史逻辑仍保留在兼容目录或共享 `app.api`、`app.models`、`app.schemas` 中。

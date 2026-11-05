@@ -11,6 +11,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.assets.contracts import AssetReference
 from app.modules.assets.infrastructure.persistence.models import Asset, AssetVersion
 from app.modules.platform import storage as storage_utils
 from app.modules.platform.execution.runtime import AppRuntime
@@ -81,6 +82,52 @@ def save_asset(
     db.add(asset)
     db.flush()
     return asset
+
+
+def save_asset_reference(
+    db: Session,
+    runtime: AppRuntime,
+    *,
+    project_id: str,
+    kind: str,
+    content: bytes,
+    extension: str = ".bin",
+    mime_type: str = "application/octet-stream",
+    width: int | None = None,
+    height: int | None = None,
+    duration_seconds: float | None = None,
+    model_id: str = "",
+    prompt_version: str = "",
+    config_version: str = "",
+    meta: dict | None = None,
+    created_by: str = "",
+) -> AssetReference:
+    """Save an asset and return a stable reference DTO instead of its ORM row."""
+    asset = save_asset(
+        db,
+        runtime,
+        project_id=project_id,
+        kind=kind,
+        content=content,
+        extension=extension,
+        mime_type=mime_type,
+        width=width,
+        height=height,
+        duration_seconds=duration_seconds,
+        model_id=model_id,
+        prompt_version=prompt_version,
+        config_version=config_version,
+        meta=meta,
+        created_by=created_by,
+    )
+    return AssetReference(
+        asset_id=asset.id,
+        project_id=asset.project_id,
+        kind=asset.kind,
+        storage_key=asset.storage_key,
+        mime_type=asset.mime_type,
+        size_bytes=asset.size_bytes,
+    )
 
 
 def record_asset_version(

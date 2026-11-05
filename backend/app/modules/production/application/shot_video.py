@@ -169,7 +169,7 @@ async def generate_shot_videos(
             continue
 
         duration = float(getattr(output, "duration_seconds", 0) or shot.duration_seconds or 5.0)
-        asset = asset_service.save_asset(
+        asset = asset_service.save_asset_reference(
             db,
             runtime,
             project_id=project.id,
@@ -190,7 +190,7 @@ async def generate_shot_videos(
             },
             created_by=user_id,
         )
-        generation.asset_id = asset.id
+        generation.asset_id = asset.asset_id
         generation.status = "succeeded"
         generation.duration_seconds = duration
         generation.cost_usd = float(result.cost_usd or 0.0)
@@ -198,12 +198,12 @@ async def generate_shot_videos(
             VideoGeneration.shot_id == shot.id, VideoGeneration.id != generation.id
         ).update({"selected": False}, synchronize_session=False)
         generation.selected = True
-        shot.selected_video_id = asset.id
+        shot.selected_video_id = asset.asset_id
         shot.status = ShotStatus.GENERATED.value
         asset_service.record_asset_version(
             db,
             project_id=project.id,
-            asset_id=asset.id,
+            asset_id=asset.asset_id,
             entity_type="shot_video",
             entity_id=shot.id,
             version=version,

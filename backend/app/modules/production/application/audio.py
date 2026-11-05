@@ -14,6 +14,7 @@ from app.models.ops import Task
 from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.assets import public as asset_service
+from app.modules.assets.contracts import AssetReference
 from app.modules.characters import public as character_module
 from app.modules.platform.constants import (
     AssetKind,
@@ -191,7 +192,7 @@ async def generate_audio(
             failures.append({"line_id": line["line_id"], "error": "TTS 未返回音频"})
             continue
         duration = float(getattr(output, "duration_seconds", 0) or line["duration_seconds"])
-        asset = asset_service.save_asset(
+        asset = asset_service.save_asset_reference(
             db,
             runtime,
             project_id=project.id,
@@ -220,7 +221,7 @@ async def generate_audio(
                 shot_id=line["shot_id"],
                 character_id=character_id,
                 kind=AudioKind.VOICE.value,
-                asset_id=asset.id,
+                asset_id=asset.asset_id,
                 text=line["text"],
                 voice_id=(voice.voice_id if voice else "default"),
                 language=project.language,
@@ -234,7 +235,7 @@ async def generate_audio(
             )
         )
         if line["shot_id"]:
-            shot_voice_asset.setdefault(line["shot_id"], asset.id)
+            shot_voice_asset.setdefault(line["shot_id"], asset.asset_id)
         created += 1
         db.flush()
 
@@ -249,7 +250,7 @@ async def generate_audio(
         "voice_lines": len(lines),
         "voice_assets": created,
         "failures": failures,
-        "subtitle_asset_id": subtitle_asset.id if subtitle_asset else "",
+        "subtitle_asset_id": subtitle_asset.asset_id if subtitle_asset else "",
     }
 
 
@@ -260,7 +261,7 @@ def _write_subtitles(
     project: Project,
     shots: list[Shot],
     created_by: str = "",
-) -> Asset | None:
+) -> AssetReference | None:
     """根据已有语音轨道的时长顺序生成 SRT 并保存字幕资产。
 
     无可用轨道返回 None；不是语音识别或强制对齐。会写临时文件和存储，只 flush、不提交。
@@ -289,7 +290,7 @@ def _write_subtitles(
     workdir.mkdir(parents=True, exist_ok=True)
     srt_path = workdir / f"subtitles_{len(cues)}.srt"
     ffmpeg_utils.write_srt(cues, srt_path)
-    asset = asset_service.save_asset(
+    asset = asset_service.save_asset_reference(
         db,
         runtime,
         project_id=project.id,
