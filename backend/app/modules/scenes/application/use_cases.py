@@ -13,11 +13,11 @@ from sqlalchemy.orm import Session
 
 from app.models.ops import Task
 from app.models.project import Project
-from app.models.scene import Scene, SceneProfile
 from app.modules.ai_runtime.public import run_agent
 from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.scenes.infrastructure.persistence.models import Scene, SceneProfile
 from app.modules.story import public as documents
 from app.modules.story.public import latest_script
 from app.schemas.scene import SceneDescriptionInput, SceneExtractionInput

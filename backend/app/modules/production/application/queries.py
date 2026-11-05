@@ -12,10 +12,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.production import DirectingPlan, Shot, ShotCharacter, Storyboard
 from app.models.project import Project
 from app.modules.characters.public import list_characters
 from app.modules.platform.exceptions import ConflictError, NotFoundError
+from app.modules.production.infrastructure.persistence.models import (
+    DirectingPlan,
+    Shot,
+    ShotCharacter,
+    Storyboard,
+)
 from app.modules.scenes.public import list_scenes
 from app.modules.story.public import assert_script_baseline, latest_script
 

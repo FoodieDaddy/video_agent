@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.character import Character, CharacterAsset
-from app.models.ops import Review, ReviewComment, WorkflowRun
+from app.models.ops import WorkflowRun
 from app.models.production import EditingProject, Shot
 from app.models.project import Project
 from app.models.scene import Scene
@@ -25,6 +25,7 @@ from app.modules.platform.ids import new_id, utcnow
 from app.modules.production import public as production_module
 from app.modules.projects.public import touch_status
 from app.modules.reviews.domain.decisions import DecisionViolation, review_decision_violation
+from app.modules.reviews.infrastructure.persistence.models import Review, ReviewComment
 from app.modules.scenes import public as scene_module
 from app.modules.story import public as story_module
 

@@ -1,1 +1,1 @@
-""" production.interfaces layer. See module README for ownership rules. """
+"""production.interfaces layer. See module README for ownership rules."""

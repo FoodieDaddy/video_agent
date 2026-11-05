@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.project import ConfigVersion
+from app.modules.configuration.infrastructure.persistence.models import ConfigVersion
 from app.modules.platform.configuration.config_models import AgentConfig
 from app.modules.platform.configuration.config_store import stable_checksum
 from app.modules.platform.exceptions import ConfigurationError, NotFoundError, ValidationAppError

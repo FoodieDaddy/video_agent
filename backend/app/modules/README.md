@@ -1,6 +1,6 @@
 # 逻辑业务模块
 
-这里是模块化单体的当前实现。各模块共同运行在一个应用中，启动入口仍为 `app.main:app`；尚未拆成独立微服务或 uv workspace 成员。
+这里是模块化单体的当前实现。各模块共同运行在一个应用中，启动入口仍为 `app.main:app`；尚未拆成独立微服务或 uv workspace 成员。业务 ORM 映射与所属模块并置于 `infrastructure/persistence/models.py`；platform 持有共享 Base、连接 Session 和技术任务表。旧 `app.models` 只负责统一导入与兼容导出，应用用例仍接收 ORM 和调用方 Session，仓储/DTO 解耦仍待迁移。
 
 ## 应用组合与生命周期
 
@@ -37,7 +37,7 @@
 
 ## 兼容期边界
 
-这批应用用例仍使用原有 Session 和 ORM 返回类型，事务继续由原调用方管理；完整仓储、DTO 边界和业务 ORM 归属尚未完成。旧 `models` 和 `schemas` 仍是唯一映射与 Pydantic 定义，模块契约仅重新导出，不复制类。
+应用用例仍使用原有 Session 和 ORM 返回类型，事务继续由原调用方管理；完整仓储和 DTO 边界尚未完成。业务 ORM 的唯一类定义已移到所属模块；旧 `app.models` 聚合与逐文件入口重新导出或别名指向同一类。Pydantic 定义仍集中在 `app.schemas`，模块契约只重新导出，不复制类。
 
 原 `services/pipeline.py` 是函数转发门面，其他已迁移旧入口通过模块别名指向唯一实现。这样旧导入、配置缓存、数据库元数据和测试 monkeypatch 继续使用同一对象。新增业务调用应直接使用本目录公开入口。
 

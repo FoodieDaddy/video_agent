@@ -1,1 +1,1 @@
-""" production.domain layer. See module README for ownership rules. """
+"""production.domain layer. See module README for ownership rules."""

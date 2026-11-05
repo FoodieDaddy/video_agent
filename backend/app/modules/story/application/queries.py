@@ -6,15 +6,20 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.story import Script, SourceDocument
 from app.modules.platform.exceptions import ConflictError, NotFoundError
+from app.modules.story.domain.script_baseline import (
+    build_script_fingerprint_input,
+    script_text_of_content,
+)
+from app.modules.story.domain.script_baseline import (
+    fingerprint_script as fingerprint_script_input,
+)
+from app.modules.story.infrastructure.persistence.models import Script, SourceDocument
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +56,7 @@ def script_payload(script: Script | None) -> dict:
 
 def script_text_of(script: Script) -> str:
     """读取持久化正文；旧版仅有梗概/事件时返回空字符串，不将摘要冒充全文。"""
-    value = (script.content or {}).get("script_text", "")
-    return value if isinstance(value, str) else ""
+    return script_text_of_content(script.content)
 
 
 def script_fingerprint(script: Script) -> str:
@@ -63,33 +67,15 @@ def script_fingerprint(script: Script) -> str:
         业务字段仍参与散列。键顺序不影响结果，正文空白和结构列表顺序会影响结果。
         不查询、不修改记录；这不是完整配置快照或语义等价证明。
     """
-    metadata = {
-        "id",
-        "project_id",
-        "version",
-        "status",
-        "approved",
-        "approved_version",
-        "agent_id",
-        "model_id",
-        "prompt_version",
-        "config_version",
-        "created_at",
-        "updated_at",
-        "workspace_meta",
-    }
-    content = {key: value for key, value in (script.content or {}).items() if key not in metadata}
-    payload = {
-        "title": script.title,
-        "logline": script.logline,
-        "synopsis": script.synopsis,
-        "genre": script.genre,
-        "tone": script.tone,
-        "script_text": script_text_of(script),
-        "content": content,
-    }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    value = build_script_fingerprint_input(
+        title=script.title,
+        logline=script.logline,
+        synopsis=script.synopsis,
+        genre=script.genre,
+        tone=script.tone,
+        content=script.content,
+    )
+    return fingerprint_script_input(value)
 
 
 def assert_script_baseline(db: Session, project_id: str, script_id: str, fingerprint: str | None) -> Script:

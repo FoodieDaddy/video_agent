@@ -1,1 +1,1 @@
-""" characters.domain layer. See module README for ownership rules. """
+"""characters.domain layer. See module README for ownership rules."""

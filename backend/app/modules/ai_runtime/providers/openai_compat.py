@@ -126,9 +126,7 @@ class _HttpProviderMixin:
         output_price = float(self.options.get("output_cost_per_1k") or 0.0)
         unit_price = float(self.options.get("unit_cost") or 0.0)
         return round(
-            (tokens_in / 1000.0) * input_price
-            + (tokens_out / 1000.0) * output_price
-            + units * unit_price,
+            (tokens_in / 1000.0) * input_price + (tokens_out / 1000.0) * output_price + units * unit_price,
             6,
         )
 
@@ -184,9 +182,7 @@ class OpenAICompatibleLLMProvider(_HttpProviderMixin, LLMProvider):
         except httpx.TransportError as exc:
             # Do not retain the original exception: its message/request may contain
             # Authorization headers, signed URLs, or gateway-provided secrets.
-            raise ProviderError(
-                f"{self.name} LLM transport failed ({type(exc).__name__})"
-            ) from None
+            raise ProviderError(f"{self.name} LLM transport failed ({type(exc).__name__})") from None
         latency_ms = (time.perf_counter() - started) * 1000
         if response.status_code >= 400:
             raise ProviderError(
@@ -253,9 +249,7 @@ class OpenAICompatibleVisionProvider(_HttpProviderMixin, VisionProvider):
         async with self._client() as client:
             response = await client.post("/chat/completions", headers=self._headers(), json=payload)
         if response.status_code >= 400:
-            raise ProviderError(
-                f"{self.name} vision request failed ({response.status_code}): upstream error"
-            )
+            raise ProviderError(f"{self.name} vision request failed ({response.status_code}): upstream error")
         body = response.json()
         content = body.get("choices", [{}])[0].get("message", {}).get("content") or ""
         usage = body.get("usage") or {}
@@ -313,9 +307,7 @@ class OpenAIImageProvider(_HttpProviderMixin, ImageProvider):
                     "response_format": "b64_json",
                 }
                 payload.update(self.options.get("request_defaults") or {})
-                response = await client.post(
-                    "/images/generations", headers=self._headers(), json=payload
-                )
+                response = await client.post("/images/generations", headers=self._headers(), json=payload)
         if response.status_code >= 400:
             raise ProviderError(
                 f"{self.name} image generation failed ({response.status_code}): upstream error"
@@ -396,7 +388,9 @@ class OpenAISpeechProvider(_HttpProviderMixin, AudioProvider):
             with tempfile.TemporaryDirectory() as tmp:
                 probe_path = Path(tmp) / f"probe.{audio_format}"
                 probe_path.write_bytes(content)
-                duration = ffmpeg.probe_duration(probe_path, self.options.get("ffprobe_bin", "ffprobe")) or duration
+                duration = (
+                    ffmpeg.probe_duration(probe_path, self.options.get("ffprobe_bin", "ffprobe")) or duration
+                )
         return AudioResult(
             content=content,
             mime=mime,
@@ -467,9 +461,7 @@ class HttpTaskVideoProvider(_HttpProviderMixin, VideoProvider):
         async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=120) as client:
             submit = await client.post(self.submit_path, json=self._job_payload(request), headers=headers)
             if submit.status_code >= 400:
-                raise ProviderError(
-                    f"{self.name} video submit failed ({submit.status_code}): upstream error"
-                )
+                raise ProviderError(f"{self.name} video submit failed ({submit.status_code}): upstream error")
             body = submit.json()
             job_id = str(body.get("id") or body.get("task_id") or body.get("request_id") or "")
             if not job_id:
@@ -481,8 +473,7 @@ class HttpTaskVideoProvider(_HttpProviderMixin, VideoProvider):
                 status_response = await client.get(f"{self.status_path}/{job_id}", headers=headers)
                 if status_response.status_code >= 400:
                     raise ProviderError(
-                        f"{self.name} status check failed ({status_response.status_code}): "
-                        "upstream error"
+                        f"{self.name} status check failed ({status_response.status_code}): upstream error"
                     )
                 status_body = status_response.json()
                 status = str(status_body.get("status") or "").lower()
@@ -640,9 +631,7 @@ class OpenAIVideosProvider(_HttpProviderMixin, VideoProvider):
             response = await client.get(url, headers=headers)
             if response.status_code < 400 and response.content:
                 return response.content
-        raise ProviderError(
-            f"{self.name} video job {job_id} finished but no file could be downloaded"
-        )
+        raise ProviderError(f"{self.name} video job {job_id} finished but no file could be downloaded")
 
     async def generate(self, request: VideoRequest) -> VideoResult:
         base_url = str(self.options.get("base_url") or "").rstrip("/")
@@ -653,22 +642,16 @@ class OpenAIVideosProvider(_HttpProviderMixin, VideoProvider):
         headers = self._headers()
         payload = self._job_payload(request)
         dropped = [
-            name
-            for name in ("reference_image", "first_frame", "last_frame")
-            if getattr(request, name)
+            name for name in ("reference_image", "first_frame", "last_frame") if getattr(request, name)
         ]
         timeout = float(self.options.get("timeout_seconds") or 300)
 
         async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
             submit = await client.post(self.submit_path, json=payload, headers=headers)
             if submit.status_code >= 400:
-                raise ProviderError(
-                    f"{self.name} video submit failed ({submit.status_code}): upstream error"
-                )
+                raise ProviderError(f"{self.name} video submit failed ({submit.status_code}): upstream error")
             state = submit.json() or {}
-            job_id = str(
-                state.get("id") or state.get("task_id") or state.get("request_id") or ""
-            )
+            job_id = str(state.get("id") or state.get("task_id") or state.get("request_id") or "")
             if not job_id:
                 raise ProviderError(f"{self.name} video submit returned no job id")
 
@@ -683,9 +666,7 @@ class OpenAIVideosProvider(_HttpProviderMixin, VideoProvider):
                         f"{_safe_provider_detail(state.get('error') or state.get('message'))}"
                     )
                 if time.monotonic() >= deadline:
-                    raise ProviderError(
-                        f"{self.name} video job {job_id} timed out after {self.max_wait}s"
-                    )
+                    raise ProviderError(f"{self.name} video job {job_id} timed out after {self.max_wait}s")
                 await asyncio.sleep(self.poll_interval)
                 polled = await client.get(f"{self.status_path}/{job_id}", headers=headers)
                 if polled.status_code >= 400:
@@ -698,8 +679,7 @@ class OpenAIVideosProvider(_HttpProviderMixin, VideoProvider):
 
         output = state.get("output") or {}
         duration = float(
-            (output.get("duration_seconds") if isinstance(output, dict) else None)
-            or request.duration_seconds
+            (output.get("duration_seconds") if isinstance(output, dict) else None) or request.duration_seconds
         )
         meta: dict[str, Any] = {"job_id": job_id, "request": payload}
         if self.max_duration and request.duration_seconds > self.max_duration:

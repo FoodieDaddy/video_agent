@@ -1,1 +1,1 @@
-""" workflow.interfaces layer. See module README for ownership rules. """
+"""workflow.interfaces layer. See module README for ownership rules."""

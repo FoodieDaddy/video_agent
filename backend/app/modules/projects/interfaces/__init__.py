@@ -1,1 +1,1 @@
-""" projects.interfaces layer. See module README for ownership rules. """
+"""projects.interfaces layer. See module README for ownership rules."""

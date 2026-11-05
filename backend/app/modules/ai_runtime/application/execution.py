@@ -14,9 +14,10 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.models.ops import AgentRun, ModelCallLog, Task
-from app.models.project import BudgetEvent, Project
+from app.models.ops import Task
+from app.models.project import Project
 from app.modules.ai_runtime.base import AgentContext, AgentResult
+from app.modules.ai_runtime.infrastructure.persistence.models import AgentRun, BudgetEvent, ModelCallLog
 from app.modules.ai_runtime.registry import create_agent
 from app.modules.contracts.public import dumps, json_safe, serialize_output
 from app.modules.platform.exceptions import AppError, ProviderError

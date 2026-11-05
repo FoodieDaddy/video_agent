@@ -89,7 +89,6 @@ def test_project_summary_tracks_versions(client, runtime, headers, project):
         assert projects.get_project(db, row.id, "tester").id == project_id
 
 
-
 def test_workflow_resume_uses_frozen_definition_snapshot(client, runtime, project, monkeypatch):
     project_id = project["id"]
     run_id, _, status = run_to_first_gate(runtime, project_id)

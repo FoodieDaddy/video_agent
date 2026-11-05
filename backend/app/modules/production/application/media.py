@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from app.models.character import Character, CharacterAsset, CharacterVoice
 from app.models.ops import Task
-from app.models.production import AudioTrack, EditingProject, Shot, VideoGeneration
 from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.assets import public as asset_service
@@ -37,6 +36,12 @@ from app.modules.platform.media import ffmpeg as ffmpeg_utils
 from app.modules.platform.text import narrative
 from app.modules.production.application import queries as production_queries
 from app.modules.production.infrastructure.agents.audio import VoiceSynthesisInput
+from app.modules.production.infrastructure.persistence.models import (
+    AudioTrack,
+    EditingProject,
+    Shot,
+    VideoGeneration,
+)
 from app.modules.projects.public import touch_status
 from app.modules.story import public as story_module
 from app.schemas.audio import AudioPlanInput

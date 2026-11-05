@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task, WorkflowRun
+from app.models.ops import Task
 from app.models.project import Project
 from app.modules.characters import public as character_module
 from app.modules.platform.configuration.config_models import WorkflowNodeConfig
@@ -23,6 +23,7 @@ from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.production import public as production_module
 from app.modules.scenes import public as scene_module
 from app.modules.story import public as story_module
+from app.modules.workflow.infrastructure.persistence.models import WorkflowRun
 
 logger = logging.getLogger(__name__)
 

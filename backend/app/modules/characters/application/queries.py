@@ -11,7 +11,7 @@ import logging
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.character import Character, CharacterProfile
+from app.modules.characters.infrastructure.persistence.models import Character, CharacterProfile
 
 logger = logging.getLogger(__name__)
 

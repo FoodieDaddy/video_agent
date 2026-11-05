@@ -8,8 +8,10 @@ flow, and the invariants the code relies on. Decisions with trade-offs are recor
 当前已实施第一批逻辑模块化，源码入口见[模块导航](../../backend/app/modules/README.md)，
 已迁移范围与后续阶段见[重构进度](refactoring-progress.md)。本文下方保留的
 `app.services`、`app.core`、`app.agents`、`app.providers` 等旧路径现在主要作为
-兼容入口；其唯一实现位于 `app.modules`。业务 ORM 和 Pydantic Schema 暂保留
-原定义，workspace 和完整仓储/DTO 解耦尚未实施。
+兼容入口；其唯一实现位于 `app.modules`。业务 ORM 映射已归入所属模块的
+`infrastructure/persistence`（platform 使用 `persistence`）；`app.models` 继续作为统一
+metadata 注册和旧导入聚合入口。Pydantic Schema 仍在 `app.schemas`，workspace 和完整仓储/DTO
+解耦尚未实施。
 
 ## 1. Design goals
 
@@ -54,10 +56,11 @@ bootstrap: 13 business roles → 17 executable Agent IDs
 
 ### 2.2 `models/` and `schemas/`
 
-SQLAlchemy tables (`models/`) describe persistence; pydantic classes (`schemas/`) describe
-agent input/output and are the structured-output contract. `schemas/registry.py` maps a
-schema name from agent YAML to a pydantic model, so validation never hardcodes an agent.
-`scripts/export_schemas.py` exports them to `config/schemas/*.json` for prompts/tools.
+SQLAlchemy mappings live beside their owning modules and share the single platform `Base`.
+`app.models` imports and re-exports those mappings for metadata registration and legacy
+imports. Pydantic classes remain under `app.schemas/` and describe agent input/output.
+`schemas/registry.py` maps a schema name from agent YAML to a pydantic model, so validation
+never hardcodes an agent. `scripts/export_schemas.py` exports them to `config/schemas/*.json`.
 
 ### 2.3 `providers/`
 

@@ -1,1 +1,1 @@
-""" projects.domain layer. See module README for ownership rules. """
+"""projects.domain layer. See module README for ownership rules."""

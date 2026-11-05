@@ -11,7 +11,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.scene import Scene, SceneProfile
+from app.modules.scenes.infrastructure.persistence.models import Scene, SceneProfile
 
 logger = logging.getLogger(__name__)
 

@@ -1,1 +1,1 @@
-""" story.interfaces layer. See module README for ownership rules. """
+"""story.interfaces layer. See module README for ownership rules."""

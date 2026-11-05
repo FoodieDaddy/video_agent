@@ -16,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.project import Asset, Project
-from app.models.story import SourceDocument, StoryChapter
 from app.modules.assets.public import save_asset
 from app.modules.platform import storage as storage_utils
 from app.modules.platform.constants import AssetKind, ProjectStatus
@@ -26,6 +25,7 @@ from app.modules.platform.ids import new_id
 from app.modules.platform.resources import PROJECT_ROOT
 from app.modules.platform.text import narrative
 from app.modules.projects import public as project_service
+from app.modules.story.infrastructure.persistence.models import SourceDocument, StoryChapter
 
 logger = logging.getLogger(__name__)
 

@@ -1,1 +1,1 @@
-""" configuration.infrastructure layer. See module README for ownership rules. """
+"""configuration.infrastructure layer. See module README for ownership rules."""

@@ -11,12 +11,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task, TaskEvent
 from app.models.project import Project
 from app.modules.contracts.public import json_safe
 from app.modules.platform.constants import TaskStatus
 from app.modules.platform.exceptions import NotFoundError
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task, TaskEvent
 
 
 def create_task(

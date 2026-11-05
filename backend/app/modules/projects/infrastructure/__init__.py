@@ -1,1 +1,1 @@
-""" projects.infrastructure layer. See module README for ownership rules. """
+"""projects.infrastructure layer. See module README for ownership rules."""

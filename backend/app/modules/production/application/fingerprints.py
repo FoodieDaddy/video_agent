@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 
-from app.models.production import DirectingPlan, Shot
 from app.modules.platform.exceptions import ValidationAppError
+from app.modules.production.infrastructure.persistence.models import DirectingPlan, Shot
 
 
 def content_fingerprint(value: dict) -> str:

@@ -14,12 +14,6 @@ from sqlalchemy.orm import Session
 
 from app.models.character import CharacterAsset, CharacterProfile
 from app.models.ops import Task
-from app.models.production import (
-    AudioTrack,
-    EvaluationResult,
-    EvaluationRun,
-    VideoGeneration,
-)
 from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.characters import public as character_module
@@ -28,6 +22,12 @@ from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
 from app.modules.production.application import media
 from app.modules.production.application import queries as production_queries
+from app.modules.production.infrastructure.persistence.models import (
+    AudioTrack,
+    EvaluationResult,
+    EvaluationRun,
+    VideoGeneration,
+)
 from app.schemas.evaluation import EvaluationInput
 
 logger = logging.getLogger(__name__)

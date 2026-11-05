@@ -14,11 +14,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
 from app.modules.contracts.public import json_safe
 from app.modules.platform.constants import TaskStatus
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import utcnow
+from app.modules.platform.persistence.models import Task
 from app.modules.platform.persistence.session import session_scope
 from app.modules.platform.persistence.task_records import emit
 

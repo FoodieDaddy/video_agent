@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task, WorkflowCheckpoint, WorkflowRun
+from app.models.ops import Task
 from app.models.project import Project
 from app.modules.platform.configuration.config_models import WorkflowConfig, WorkflowNodeConfig
 from app.modules.platform.constants import WorkflowStatus
@@ -23,6 +23,7 @@ from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id, utcnow
 from app.modules.reviews import public as reviews
 from app.modules.workflow.application.handlers import HandlerContext, build_handlers, require_handler
+from app.modules.workflow.infrastructure.persistence.models import WorkflowCheckpoint, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -178,9 +179,7 @@ class WorkflowEngine:
         # Legacy runs without a snapshot retain the previous current-config behavior.
         snapshot = (run.state or {}).get("workflow_definition")
         workflow = WorkflowConfig.model_validate(snapshot) if isinstance(snapshot, dict) else None
-        return await self.run(
-            db, run=run, project=project, task=task, user_id=user_id, workflow=workflow
-        )
+        return await self.run(db, run=run, project=project, task=task, user_id=user_id, workflow=workflow)
 
     async def run(
         self,

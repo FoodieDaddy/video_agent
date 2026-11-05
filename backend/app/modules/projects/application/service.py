@@ -10,10 +10,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.project import Project, ProjectMember, User
 from app.modules.platform.constants import ProjectStatus
 from app.modules.platform.exceptions import NotFoundError, PermissionDeniedError
 from app.modules.platform.ids import new_id
+from app.modules.projects.infrastructure.persistence.models import Project, ProjectMember, User
 
 
 def ensure_user(db: Session, user_id: str, *, role: str = "user", name: str = "") -> User:

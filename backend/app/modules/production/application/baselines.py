@@ -6,8 +6,8 @@ from copy import deepcopy
 
 from sqlalchemy.orm import Session
 
-from app.models.production import DirectingPlan, Storyboard
 from app.modules.platform.exceptions import ConflictError, NotFoundError
+from app.modules.production.infrastructure.persistence.models import DirectingPlan, Storyboard
 
 from .fingerprints import content_fingerprint, directing_plan_fingerprint, shot_edit_fingerprint
 from .queries import directing_source_status, latest_board, latest_plan, list_shots

@@ -62,6 +62,10 @@ COMPATIBLE_MODULES = (
     ("app.core.config_store", "app.modules.platform.configuration.config_store"),
     ("app.db.session", "app.modules.platform.persistence.session"),
     ("app.models.base", "app.modules.platform.persistence.base"),
+    ("app.models.character", "app.modules.characters.infrastructure.persistence.models"),
+    ("app.models.scene", "app.modules.scenes.infrastructure.persistence.models"),
+    ("app.models.production", "app.modules.production.infrastructure.persistence.models"),
+    ("app.models.story", "app.modules.story.infrastructure.persistence.models"),
     ("app.services.agent_runner", "app.modules.ai_runtime.application.execution"),
     ("app.providers.registry", "app.modules.ai_runtime.providers.registry"),
     ("app.agents.registry", "app.modules.ai_runtime.registry"),
@@ -194,6 +198,7 @@ def test_orm_metadata_and_agent_catalog_have_single_sources():
     assert len({cls.__table__.fullname for cls in mapped}) == len(mapped)
     assert all(cls.__table__.metadata is Base.metadata for cls in mapped)
     assert all(Base.metadata.tables[cls.__table__.fullname] is cls.__table__ for cls in mapped)
+    assert all(cls.__module__.startswith("app.modules.") for cls in mapped)
 
     ids = agent_ids()
     flattened = [agent_id for family in AGENT_FAMILIES.values() for agent_id in family]
@@ -204,6 +209,81 @@ def test_orm_metadata_and_agent_catalog_have_single_sources():
         assert AGENT_CLASSES[agent_id] is implementation
         assert implementation.agent_id == agent_id
         assert implementation.__module__.startswith("app.modules.")
+
+
+def test_legacy_model_aggregators_reexport_the_canonical_classes():
+    from app.models.ops import (
+        AgentRun,
+        AssetVersion,
+        ModelCallLog,
+        Review,
+        ReviewComment,
+        Task,
+        TaskEvent,
+        WorkflowCheckpoint,
+        WorkflowRun,
+    )
+    from app.models.project import (
+        Asset,
+        BudgetEvent,
+        ConfigVersion,
+        Project,
+        ProjectMember,
+        PromptVersion,
+        User,
+    )
+    from app.modules.ai_runtime.infrastructure.persistence.models import AgentRun as CanonicalAgentRun
+    from app.modules.ai_runtime.infrastructure.persistence.models import (
+        BudgetEvent as CanonicalBudgetEvent,
+    )
+    from app.modules.ai_runtime.infrastructure.persistence.models import (
+        ModelCallLog as CanonicalModelCallLog,
+    )
+    from app.modules.assets.infrastructure.persistence.models import Asset as CanonicalAsset
+    from app.modules.assets.infrastructure.persistence.models import (
+        AssetVersion as CanonicalAssetVersion,
+    )
+    from app.modules.configuration.infrastructure.persistence.models import (
+        ConfigVersion as CanonicalConfigVersion,
+    )
+    from app.modules.configuration.infrastructure.persistence.models import (
+        PromptVersion as CanonicalPromptVersion,
+    )
+    from app.modules.platform.persistence.models import Task as CanonicalTask
+    from app.modules.platform.persistence.models import TaskEvent as CanonicalTaskEvent
+    from app.modules.projects.infrastructure.persistence.models import Project as CanonicalProject
+    from app.modules.projects.infrastructure.persistence.models import (
+        ProjectMember as CanonicalProjectMember,
+    )
+    from app.modules.projects.infrastructure.persistence.models import User as CanonicalUser
+    from app.modules.reviews.infrastructure.persistence.models import Review as CanonicalReview
+    from app.modules.reviews.infrastructure.persistence.models import (
+        ReviewComment as CanonicalReviewComment,
+    )
+    from app.modules.workflow.infrastructure.persistence.models import (
+        WorkflowCheckpoint as CanonicalWorkflowCheckpoint,
+    )
+    from app.modules.workflow.infrastructure.persistence.models import WorkflowRun as CanonicalWorkflowRun
+
+    pairs = (
+        (AgentRun, CanonicalAgentRun),
+        (AssetVersion, CanonicalAssetVersion),
+        (ModelCallLog, CanonicalModelCallLog),
+        (Review, CanonicalReview),
+        (ReviewComment, CanonicalReviewComment),
+        (Task, CanonicalTask),
+        (TaskEvent, CanonicalTaskEvent),
+        (WorkflowCheckpoint, CanonicalWorkflowCheckpoint),
+        (WorkflowRun, CanonicalWorkflowRun),
+        (Asset, CanonicalAsset),
+        (BudgetEvent, CanonicalBudgetEvent),
+        (ConfigVersion, CanonicalConfigVersion),
+        (Project, CanonicalProject),
+        (ProjectMember, CanonicalProjectMember),
+        (PromptVersion, CanonicalPromptVersion),
+        (User, CanonicalUser),
+    )
+    assert all(legacy is canonical for legacy, canonical in pairs)
 
 
 def test_cross_module_imports_use_public_or_declared_technical_interfaces():
@@ -282,8 +362,15 @@ def test_domain_rules_use_only_standard_library_and_their_own_domain():
 def test_business_modules_follow_standard_layer_package_layout():
     """业务模块的分层目录保持一致；空层仅代表预留边界，不代表已实现功能。"""
     business_modules = (
-        "projects", "story", "characters", "scenes", "production",
-        "reviews", "workflow", "assets", "configuration",
+        "projects",
+        "story",
+        "characters",
+        "scenes",
+        "production",
+        "reviews",
+        "workflow",
+        "assets",
+        "configuration",
     )
     for name in business_modules:
         module = MODULES / name

@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 
 from app.models.character import CharacterCostume, CharacterState
 from app.models.ops import Task
-from app.models.production import DirectingPlan, Shot, ShotCharacter, Storyboard
 from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.characters.public import character_payload, list_characters
@@ -31,6 +30,12 @@ from app.modules.platform.exceptions import (
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
 from app.modules.platform.persistence.versions import next_version as _next_version
+from app.modules.production.infrastructure.persistence.models import (
+    DirectingPlan,
+    Shot,
+    ShotCharacter,
+    Storyboard,
+)
 from app.modules.projects.public import touch_status
 from app.modules.scenes.public import list_scenes, scene_payload
 from app.modules.story.public import assert_script_baseline, latest_script, script_fingerprint

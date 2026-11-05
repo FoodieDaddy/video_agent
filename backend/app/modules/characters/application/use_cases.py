@@ -10,10 +10,14 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.models.character import Character, CharacterProfile, CharacterRelationship
 from app.models.ops import Task
 from app.models.project import Project
 from app.modules.ai_runtime.public import run_agent
+from app.modules.characters.infrastructure.persistence.models import (
+    Character,
+    CharacterProfile,
+    CharacterRelationship,
+)
 from app.modules.platform.constants import CharacterStatus, ProjectStatus
 from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime

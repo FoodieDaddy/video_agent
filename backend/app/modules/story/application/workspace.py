@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from app.models.ops import Task
 from app.models.project import Project
-from app.models.story import Script, StoryEvent
 from app.modules.ai_runtime.public import run_agent
 from app.modules.platform.constants import ProjectStatus
 from app.modules.platform.exceptions import AgentSchemaError, ConflictError, ValidationAppError
@@ -30,6 +29,7 @@ from app.modules.platform.ids import new_id
 from app.modules.platform.persistence.versions import next_version
 from app.modules.projects.public import touch_status
 from app.modules.story.contracts import ScriptInput, ScriptOutput
+from app.modules.story.infrastructure.persistence.models import Script, StoryEvent
 
 from .documents import extract_text
 from .queries import get_project_script, script_payload, script_text_of

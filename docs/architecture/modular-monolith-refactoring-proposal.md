@@ -1,6 +1,6 @@
 # AI Film Studio 多模块化改动说明
 
-- 状态：实施中，首批逻辑模块化已落地；workspace 等后续阶段待实施
+- 状态：实施中，逻辑模块化、工作流定义快照与业务 ORM 模块归属已落地；仓储/DTO 解耦、production/media 拆分和 workspace 待实施
 - 日期：2026 年 11 月 4 日
 - 适用项目：video_agent
 

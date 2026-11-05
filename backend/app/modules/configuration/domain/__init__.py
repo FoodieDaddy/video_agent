@@ -1,1 +1,1 @@
-""" configuration.domain layer. See module README for ownership rules. """
+"""configuration.domain layer. See module README for ownership rules."""

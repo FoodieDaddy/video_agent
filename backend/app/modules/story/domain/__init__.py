@@ -1,1 +1,1 @@
-""" story.domain layer. See module README for ownership rules. """
+"""story.domain layer. See module README for ownership rules."""

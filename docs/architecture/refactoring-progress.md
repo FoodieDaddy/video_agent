@@ -1,8 +1,8 @@
 # 多模块化重构进度
 
-- 日期：2026 年 11 月 4 日
-- 分支：`codex/modular-monolith-phase1`
-- 状态：第一批逻辑模块化与兼容接线已实施
+- 日期：2026 年 11 月 5 日
+- 当前分支：`codex/normalize-project-structure`
+- 状态：逻辑模块化、工作流定义快照和 39 个 ORM 映射的模块归属已落地；仓储/DTO 边界、production/media 拆分与 workspace 仍在后续阶段
 
 本批按[改动说明](modular-monolith-refactoring-proposal.md)推进业务分包，保留原有运行方式和业务行为。当前仍是 `backend/app` 下的模块化单体，目标中的 `apps`、`packages`、独立成员 `pyproject.toml` 和 workspace 尚未建立。
 
@@ -80,8 +80,8 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 
 ## 后续阶段
 
-1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；当前应用函数仍保留原 Session/ORM 契约。
-2. 将业务 ORM 映射归入所属模块，保留共享 Base 和唯一元数据，逐步收拢原 models 聚合注册。
+1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已先行进入 domain，应用函数仍保留原 Session/ORM 契约。
+2. 业务 ORM 映射已归入所属模块并保留共享 Base；继续迁移仓储、DTO 与跨模块查询，再逐步收拢 `app.models` 聚合注册。
 3. 进一步细分 production 内媒体实现，按规划、生成、后期和质量提高内聚度。
 4. 模块边界稳定后再迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
 5. 旧入口的删除另作兼容性变更，不与本次迁移混在一起。
@@ -99,3 +99,22 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 - 本批不改变数据库表结构，复用已有 JSON `state` 字段；不要求 Alembic 迁移。
 
 本地验证：`backend/tests/test_workflow_service.py` 4 项通过。全量后端测试在当前执行环境超过可用执行时限，未完成；不得将其标记为通过。
+
+## 第四批：story 领域规则与 ORM 归属第一切片
+
+- 将剧本基线指纹规则抽入 `story/domain/script_baseline.py`，领域输入为不可变字节 DTO；指纹仍使用既有 canonical JSON 格式，保持已保存工作流基线可比较。
+- `story/application/queries.py` 负责把 Script ORM 行投影到领域输入，并保留原 `story.public` 函数签名。
+- 将 `SourceDocument`、`StoryChapter`、`Script`、`StoryEvent` 映射移入 `story/infrastructure/persistence/models.py`，使用唯一的 platform `Base` 和 metadata。
+- `app.models.story` 保留为模块别名兼容入口；`app.models` 聚合仍注册全部业务表。story 内部改为导入模块内映射，其他旧调用方继续通过兼容路径读取同一类对象。
+- 本批未改变表名、列、外键或事务责任；完整仓储和跨模块 DTO 边界尚未完成。
+
+本地验证：story 领域和基线回归 32 项通过，模块架构、模块 3/4 与 story 回归 105 项通过；后续全量门禁结果见第五批。
+
+## 第五批：全量业务 ORM 映射归属
+
+- 39 个 ORM 类的唯一实现已迁入 `projects`、`story`、`characters`、`scenes`、`production`、`reviews`、`workflow`、`assets`、`configuration`、`ai_runtime` 和 `platform` 的持久化目录。
+- `app.models` 及旧的 `app.models.character/scene/production/story` 导入继续导出或别名到同一类；`app.models` 仍集中导入所有映射，使唯一 `Base.metadata` 可完整注册。
+- 同模块 application 改为导入所属映射；跨模块现存调用仍有 ORM 直接依赖，后续通过 repositories/DTO 分批收窄。
+- 对比重构前 `HEAD` 与当前 metadata：39 张表的列名、类型、可空性、主键、外键、约束和索引完全相同；本批只改变类定义归属，没有数据库结构或数据迁移。
+
+本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 309 项通过，含模块架构约束；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock；没有启动网页服务或调用真实模型。

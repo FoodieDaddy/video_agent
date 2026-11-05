@@ -11,8 +11,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.ops import AssetVersion
-from app.models.project import Asset
+from app.modules.assets.infrastructure.persistence.models import Asset, AssetVersion
 from app.modules.platform import storage as storage_utils
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id

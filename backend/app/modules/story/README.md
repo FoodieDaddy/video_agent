@@ -1,6 +1,6 @@
 # story 业务模块
 
-公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。
+公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。剧本正文和工作流基线指纹规则位于纯 `domain` 层；application 负责将 ORM 行投影为不可变指纹输入并执行数据库读取。剧本、章节、源文档和故事事件的 ORM 映射归 story 模块持有，旧 `app.models.story` 路径转发到同一映射模块。
 
 本批迁移保留调用方 Session 和原有返回对象，未改变事务与业务规则。
 跨业务依赖通过公开接口访问，Agent 实现在 `infrastructure/agents`，由启动目录装配。

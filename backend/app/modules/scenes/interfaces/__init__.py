@@ -1,1 +1,1 @@
-""" scenes.interfaces layer. See module README for ownership rules. """
+"""scenes.interfaces layer. See module README for ownership rules."""
