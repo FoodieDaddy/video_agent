@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 为单个场景生成可复用的视觉档案（光线、色调、道具、画面提示词）。
 model:
-  provider: qwen
-  model_id: qwen3.8-27b
+  provider: fast_gateway
+  model_id: env:FAST_GATEWAY_MODEL
   capability: text_reasoning
-  fallback_provider: qwen
-  fallback_model_id: qwen3.8-27b
+  fallback_provider: null
+  fallback_model_id: null
   provider_options: {}
 generation:
   temperature: 0.4

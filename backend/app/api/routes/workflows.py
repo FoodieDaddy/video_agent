@@ -9,11 +9,11 @@ from fastapi import status as http_status
 
 from app.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from app.api.schemas import ReviewCommentCreate, ReviewDecision, WorkflowStart
-from app.core.constants import WorkflowStatus
-from app.core.exceptions import NotFoundError
 from app.models.ops import Review, WorkflowRun
-from app.services import reviews
-from app.services import workflow as workflow_service
+from app.modules.platform.constants import WorkflowStatus
+from app.modules.platform.exceptions import NotFoundError
+from app.modules.reviews import public as reviews
+from app.modules.workflow import public as workflow_service
 
 router = APIRouter(tags=["workflow"])
 

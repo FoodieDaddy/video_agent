@@ -172,9 +172,7 @@ class EvaluationResult(Base, TimestampMixin):
 
     id: Mapped[str] = id_column("evalres")
     project_id: Mapped[str] = mapped_column(String(48), index=True)
-    evaluation_run_id: Mapped[str] = mapped_column(
-        String(48), ForeignKey("evaluation_runs.id"), index=True
-    )
+    evaluation_run_id: Mapped[str] = mapped_column(String(48), ForeignKey("evaluation_runs.id"), index=True)
     dimension: Mapped[str] = mapped_column(String(64), default="")
     score: Mapped[float] = mapped_column(Float, default=0.0)
     issue_type: Mapped[str] = mapped_column(String(64), default="")

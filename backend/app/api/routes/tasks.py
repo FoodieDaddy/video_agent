@@ -10,9 +10,9 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import RuntimeDep, SessionDep, UserDep, project_scope
-from app.db.session import session_scope
 from app.models.ops import Task
-from app.services import tasks as task_service
+from app.modules.platform.persistence.session import session_scope
+from app.modules.workflow.public import tasks as task_service
 
 router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["tasks"])
 
@@ -41,8 +41,7 @@ def get_task(task_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     return {
         "task": task_service.task_public(task),
         "events": [
-            task_service.event_public(event)
-            for event in task_service.task_events(db, task.id, limit=200)
+            task_service.event_public(event) for event in task_service.task_events(db, task.id, limit=200)
         ],
     }
 
@@ -130,7 +129,7 @@ def _event_stream(task_id: str, after: str, timeout: float) -> Iterator[str]:
 
 def project_id_of(db, task_id: str) -> str:
     """Resolve a task's project so the usual isolation check can run."""
-    from app.core.exceptions import NotFoundError
+    from app.modules.platform.exceptions import NotFoundError
 
     task = db.get(Task, task_id)
     if task is None:

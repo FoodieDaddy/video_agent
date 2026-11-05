@@ -1,0 +1,470 @@
+{
+  "date": "2026-11-05",
+  "verified_at": "2026-11-05T05:17:17+08:00",
+  "scope": [
+    "导演规划",
+    "分镜创作",
+    "第二轮审核"
+  ],
+  "next_module5_scope": [
+    "角色形象",
+    "镜头视频",
+    "第三轮审核"
+  ],
+  "project_id": "proj_d0f4b4ebea53",
+  "checks": {
+    "backend_tests": 297,
+    "frontend_tests": 107,
+    "quality_gate": "4/4",
+    "formatted_python_files": 254,
+    "type_checked_files": 5,
+    "isolated_offline": "13/13",
+    "isolated_live": "13/13"
+  },
+  "ui_assertions": {
+    "boardHistoryV1Preserved": true,
+    "directorHistoryV1Correct": true,
+    "editSaved": true,
+    "historyReadOnly": true,
+    "oldBoardStaleAfterNewDirector": true,
+    "pendingSnapshotStaleAfterEdit": true,
+    "rejectedResubmittedApproved": true,
+    "reviewSubmitted": true,
+    "staleApproveDisabled": true,
+    "v2Approved": true,
+    "focusAfterExplicitMovePreserved": true,
+    "pendingWaitVerified": true,
+    "stale_review": {
+      "review_id": "review_ff51dc5af483",
+      "approve_status": 409,
+      "status_preserved": "pending",
+      "target_status": "stale"
+    },
+    "focus_race_fixed": {
+      "active": "storyboard-review-heading",
+      "kept": true,
+      "targetVisible": true
+    }
+  },
+  "layout": {
+    "viewports": [
+      {
+        "height": 700,
+        "scrollWidth": 320,
+        "tab": "directing",
+        "width": 320,
+        "workflowTrigger": false
+      },
+      {
+        "height": 700,
+        "scrollWidth": 320,
+        "tab": "storyboard",
+        "width": 320,
+        "workflowTrigger": false
+      },
+      {
+        "height": 844,
+        "scrollWidth": 390,
+        "tab": "directing",
+        "width": 390,
+        "workflowTrigger": false
+      },
+      {
+        "height": 844,
+        "scrollWidth": 390,
+        "tab": "storyboard",
+        "width": 390,
+        "workflowTrigger": false
+      },
+      {
+        "height": 1024,
+        "scrollWidth": 768,
+        "tab": "directing",
+        "width": 768,
+        "workflowTrigger": false
+      },
+      {
+        "height": 1024,
+        "scrollWidth": 768,
+        "tab": "storyboard",
+        "width": 768,
+        "workflowTrigger": false
+      },
+      {
+        "height": 1080,
+        "scrollWidth": 1440,
+        "tab": "directing",
+        "width": 1440,
+        "workflowTrigger": false
+      },
+      {
+        "height": 1080,
+        "scrollWidth": 1440,
+        "tab": "storyboard",
+        "width": 1440,
+        "workflowTrigger": false
+      }
+    ],
+    "project_id": "proj_d0f4b4ebea53",
+    "directing-brief": {
+      "active": true,
+      "bottom": 132.9765625,
+      "navBottom": 61,
+      "panel": "directing-brief",
+      "top": 108.9765625
+    },
+    "storyboard-review": {
+      "active": true,
+      "bottom": 133.2109375,
+      "navBottom": 61,
+      "panel": "storyboard-review",
+      "top": 109.2109375
+    },
+    "page_errors": 0,
+    "history_readonly": true
+  },
+  "presentation": {
+    "mobile_panel_jumps": [
+      {
+        "bottom": 132.9765625,
+        "focused": true,
+        "navBottom": 61,
+        "tab": "directing",
+        "top": 108.9765625
+      },
+      {
+        "bottom": 133.2109375,
+        "focused": true,
+        "navBottom": 61,
+        "tab": "storyboard",
+        "top": 109.2109375
+      }
+    ],
+    "uncaught_page_errors": 0
+  },
+  "database": {
+    "project_id": "proj_d0f4b4ebea53",
+    "original_project_ids": [
+      "proj_1c4e7aafd77e",
+      "proj_5d06f1cbd290",
+      "proj_8d71c0147507",
+      "proj_a18b7154ab8c",
+      "proj_c82fd299a741",
+      "proj_e0340b15f68f"
+    ],
+    "original_tables_unchanged": 36,
+    "plans": [
+      {
+        "id": "plan_7ce8ed85cd35",
+        "version": 1,
+        "approved": true,
+        "source_script": {
+          "id": "script_e98c8b766ac0",
+          "version": 1,
+          "title": "雨夜送信",
+          "fingerprint": "585ef000aa3a7a74c39c0d8257e544cc6e36f5f0bd8364817f4bc73b1e1666c4"
+        }
+      },
+      {
+        "id": "plan_9cc29c4ef273",
+        "version": 2,
+        "approved": true,
+        "source_script": {
+          "id": "script_e98c8b766ac0",
+          "version": 1,
+          "title": "雨夜送信",
+          "fingerprint": "585ef000aa3a7a74c39c0d8257e544cc6e36f5f0bd8364817f4bc73b1e1666c4"
+        }
+      }
+    ],
+    "boards": [
+      {
+        "id": "board_b09b2662b408",
+        "version": 1,
+        "approved": true,
+        "directing_plan_id": "plan_7ce8ed85cd35"
+      },
+      {
+        "id": "board_5645530a4d81",
+        "version": 2,
+        "approved": true,
+        "directing_plan_id": "plan_9cc29c4ef273"
+      }
+    ],
+    "shot_count": 6,
+    "script_versions": 1,
+    "tasks": [
+      {
+        "id": "task_824060876d54",
+        "type": "directing",
+        "status": "failed",
+        "error_type": "RemoteProtocolError"
+      },
+      {
+        "id": "task_b8dced29c8d6",
+        "type": "directing",
+        "status": "succeeded",
+        "error_type": ""
+      },
+      {
+        "id": "task_72335c575da7",
+        "type": "storyboard",
+        "status": "succeeded",
+        "error_type": ""
+      },
+      {
+        "id": "task_4bbda061584f",
+        "type": "directing",
+        "status": "succeeded",
+        "error_type": ""
+      },
+      {
+        "id": "task_85f2a7effbb0",
+        "type": "storyboard",
+        "status": "succeeded",
+        "error_type": ""
+      }
+    ],
+    "agent_runs": [
+      {
+        "id": "arun_e5de82b6df78",
+        "agent": "director",
+        "model": "gpt-6.1-terra",
+        "provider": "fast_gateway",
+        "attempts": 2,
+        "tokens_in": 7265,
+        "tokens_out": 1297
+      },
+      {
+        "id": "arun_d4959ebb382b",
+        "agent": "storyboard",
+        "model": "gpt-6.1-terra",
+        "provider": "fast_gateway",
+        "attempts": 1,
+        "tokens_in": 9176,
+        "tokens_out": 1668
+      },
+      {
+        "id": "arun_3c597216cfa3",
+        "agent": "director",
+        "model": "gpt-6.1-terra",
+        "provider": "fast_gateway",
+        "attempts": 1,
+        "tokens_in": 1543,
+        "tokens_out": 1083
+      },
+      {
+        "id": "arun_8c629d767b93",
+        "agent": "storyboard",
+        "model": "gpt-6.1-terra",
+        "provider": "fast_gateway",
+        "attempts": 1,
+        "tokens_in": 10082,
+        "tokens_out": 1825
+      }
+    ],
+    "model_logs": 4,
+    "reviews": [
+      {
+        "id": "review_ff51dc5af483",
+        "status": "rejected",
+        "target_id": "board_b09b2662b408"
+      },
+      {
+        "id": "review_e40afbaaeb5c",
+        "status": "approved",
+        "target_id": "board_b09b2662b408"
+      },
+      {
+        "id": "review_951384fce5fc",
+        "status": "approved",
+        "target_id": "board_5645530a4d81"
+      }
+    ],
+    "provider_attempts_successful_runs": 5,
+    "media_counts": {
+      "Asset": 0,
+      "CharacterAsset": 0,
+      "VideoGeneration": 0,
+      "AudioTrack": 0,
+      "EditingProject": 0
+    },
+    "active_tasks": 0,
+    "source_file_integrity": [
+      {
+        "document_id": "doc_b67c9803367c",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_293cb55e0819",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_71deb48b5544",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_4a941acbd183",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_900000d7f6c3",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_cef64f77b49b",
+        "checksum_matches": true
+      }
+    ],
+    "latest_directing": {
+      "id": "plan_9cc29c4ef273",
+      "version": 2,
+      "source_status": "current",
+      "approved": true
+    },
+    "latest_storyboard": {
+      "id": "board_5645530a4d81",
+      "version": 2,
+      "source_status": "current",
+      "approved": true
+    },
+    "health": 200,
+    "listener_pids": [
+      "75080"
+    ]
+  },
+  "runtime": {
+    "old_pid": 72634,
+    "pid": 75080,
+    "health": 200,
+    "instance_count": 1,
+    "paths": [
+      "/api/v1/directing-plans/{plan_id}",
+      "/api/v1/storyboards/{board_id}",
+      "/api/v1/projects/{project_id}/storyboards/{board_id}/review"
+    ],
+    "transport_retry_patch_loaded": true
+  },
+  "validation_corrections": {
+    "openapi_path_placeholder": "/api/v1/storyboards/{board_id}",
+    "audit_uses_public_http_source_metadata": true,
+    "desktop_ignores_hidden_mobile_shortcut_controls": true
+  },
+  "cleanup": {
+    "owned_test_browser_sessions_closed": true,
+    "active_owned_browser_sessions": 0,
+    "isolated_live_sandbox_removed": true,
+    "necessary_evidence_preserved": true
+  },
+  "evidence_dir": "/Users/happy/.codex/visualizations/2026/11/05/module4-workspace",
+  "evidence_files": [
+    {
+      "name": "backend-quality-full.log",
+      "sha256": "22bcf438392344bb0776f44dfd3889e33a2f5b3957db1a7861a06330bf8d1f57"
+    },
+    {
+      "name": "directing-desktop.png",
+      "sha256": "af9cd13d7a59f6fe87d031d3b32b7b5cc266d87176402e06d6976176888e54ad"
+    },
+    {
+      "name": "directing-form-mobile.png",
+      "sha256": "a4e75aec2e4dbcded3281e22b54780a9974ce50f24cbdd4744bed6c65b48023d"
+    },
+    {
+      "name": "directing-mobile.png",
+      "sha256": "335eb639b70b578130b45f0647570a5cd8c893fcb4750caa9203ea0d32c7d437"
+    },
+    {
+      "name": "first-transport-failure.png",
+      "sha256": "a3e3500e2c8a767c5939c96ce4ada8d733536411bb261a6d3b1023955ba808af"
+    },
+    {
+      "name": "focus-race-fixed.json",
+      "sha256": "0a51e274119f9c89b15e1bf6d4800d0bd8126b4c4db113f63f54503833a33f4d"
+    },
+    {
+      "name": "frontend-tests.log",
+      "sha256": "b77f6b5c10d5dcc23d6d0f2457472c3efcc6ccfc104f9a622bc53295d3c53a3e"
+    },
+    {
+      "name": "history-board-v1.png",
+      "sha256": "cfe01cd71151f7d8e0244e1292a0c95dbbd31d7947f9d03183e57f590f7e4296"
+    },
+    {
+      "name": "isolated-live-check.json",
+      "sha256": "7d2cae3768a4c4956d420a69daa57d90bd3a4484936f1e0a3a44c19e16e12c52"
+    },
+    {
+      "name": "isolated-live-check.log",
+      "sha256": "16b655ffb9de939dd0ce73b177d147ffa56f245053803e9b50371288710e7c09"
+    },
+    {
+      "name": "isolated-offline-check.json",
+      "sha256": "bf0f022e62358b5060f59d3c45bd818f8bb96b1cc1ff2af2735dabf23fd03fae"
+    },
+    {
+      "name": "live-directing-before.png",
+      "sha256": "034b007636c0c1bddc04269e968ff899fe280c6248c8a9467e80c28613e49461"
+    },
+    {
+      "name": "old-board-stale.png",
+      "sha256": "08c0d2349326cfc932a27c983944c9a00051591dee0dce79e4352ee12978fde6"
+    },
+    {
+      "name": "original-project-baseline.json",
+      "sha256": "e8f791b77242e53203c627cb14530cc71c91b793457070d54bde3607fee95e7d"
+    },
+    {
+      "name": "presentation-final.json",
+      "sha256": "b14133b9c96bceab8923dbedd6df93598ae66661d5a0c41ae8ac3da77aa38c35"
+    },
+    {
+      "name": "qa-project.json",
+      "sha256": "6ff6d0ea8cfa32c0544a1c8abff558f9d890d700ec5dc2d505b4fbdd817989f7"
+    },
+    {
+      "name": "review-mobile.png",
+      "sha256": "8186e725094b55e056239e3f64579e099ec6a2a136929d665093c5e44c1619a0"
+    },
+    {
+      "name": "review-v2-approved.png",
+      "sha256": "82c2f4b4a5eb742d029fc8aa41c67244e8c21be1bdc958999d4665c0882db987"
+    },
+    {
+      "name": "runtime-final.json",
+      "sha256": "e9cec4cbd78e51f617ce943326e3fd183be33f8f341d5f53fb364881430d11f1"
+    },
+    {
+      "name": "stale-review-guard.png",
+      "sha256": "daa9385128ac5e5c6d713ff7d9bcbd94f3e0013326a1b96ac9c11e9dc6afeb5b"
+    },
+    {
+      "name": "storyboard-desktop.png",
+      "sha256": "99dd4b774007bb36c70faeac7a9dc7915a791c19818af555d3169d86e5b51271"
+    },
+    {
+      "name": "storyboard-mobile.png",
+      "sha256": "35ef2b814875ba277ca9e8edfb5a54b44c2f1952f9587257a3a53fb6da99406a"
+    },
+    {
+      "name": "ui-assertions-phase1.json",
+      "sha256": "0158545f372a57865fade93c9a49b1532feac174ec4440e91753b961141f9d3b"
+    },
+    {
+      "name": "ui-database-audit.json",
+      "sha256": "b22d5ffdbc15e2242bda81ce47a3207c0b642162a4377258db3d1ab8589668eb"
+    },
+    {
+      "name": "ui-layout-final.json",
+      "sha256": "0b73ef04bb04899614978e05ed04c5283660b41934b49753f4431b5a2b53ac2f"
+    },
+    {
+      "name": "ui-stale-review-guard.json",
+      "sha256": "de014ecba96d47b305c1e54ee7c2efff5e945dbf1bc15f08da1f6f37ec3c159b"
+    },
+    {
+      "name": "ui-v2-approved.json",
+      "sha256": "51f8e5882f5939d1b2eedc2b82dc69a0bf608ebd45f33f58d3724e40aa6ba628"
+    }
+  ]
+}

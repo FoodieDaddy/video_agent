@@ -1,5 +1,19 @@
 # Model & Provider Configuration
 
+当前默认文字供应商为 `fast_gateway`，协议是 `openai_chat`。项目根目录 `.env`
+统一保存 `FAST_GATEWAY_BASE_URL`（接口）、`FAST_GATEWAY_MODEL`（模型）和
+`FAST_GATEWAY_API_KEY`（凭据）；YAML 使用对应 `env:` 引用，不再固定接口或模型。
+12 个文字 Agent 的 `model_id` 和供应商的模型列表共用 `FAST_GATEWAY_MODEL`。
+启动、桌面入口和模块 1～3 检查均自动加载该文件，日常运行无需交互输入。
+本地 `.env` 不加入 Git，Docker Compose 仅将凭据作为运行环境变量传入容器。
+Docker Compose 同时传入地址和模型。已有进程环境变量优先于 `.env`；修改文件后
+重新启动应用或重新运行检查。显式模型引用为空或缺失时会在加载配置时清晰报错。
+
+12 个文字 Agent 的默认模型引用已经切到该供应商；原 Qwen 配置保留但禁用。
+视频、图像、视觉和语音继续使用各自能力桶，文字模型不会自动替代媒体模型。
+模块 1 默认验证所选 Agent 的文字供应商密钥；需要检查全部已启用供应商时，
+显式添加 `--all-provider-keys`。模块 2、3 默认测试使用独立数据库与文件存储。
+
 Three properties must hold at all times:
 
 1. **No model id, vendor name or API key in Python.** Code asks the config store for an
@@ -150,8 +164,8 @@ its YAML definition.
 
 ### Example: two local services (text + video)
 
-The shipped YAML points the twelve text agents at a local vLLM and the video agent at a local
-MiniMax-H3 service; the two vendors never have to match. Both keys live in `.env`:
+下面是显式切回本地 vLLM 与 MiniMax-H3 的可选配置示例；当前默认文字模型仍是
+`fast_gateway / gpt-6.1-terra`。文字和视频可以使用不同供应商，凭据保存在 `.env`：
 
 ```ini
 QWEN_API_KEY=qwen3.8

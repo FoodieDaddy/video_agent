@@ -9,9 +9,9 @@ from fastapi import status as http_status
 
 from app.api.deps import AdminDep, RuntimeDep, SessionDep
 from app.api.schemas import ConfigVersionCreate
-from app.core.exceptions import NotFoundError
-from app.services import config_admin
-from app.utils import ffmpeg as ffmpeg_utils
+from app.modules.configuration import public as config_admin
+from app.modules.platform.exceptions import NotFoundError
+from app.modules.platform.media import ffmpeg as ffmpeg_utils
 
 router = APIRouter(tags=["admin"])
 
@@ -40,9 +40,7 @@ def list_model_configs(db: SessionDep, runtime: RuntimeDep, user: AdminDep) -> d
 
 
 @router.get("/admin/model-configs/{agent_id}")
-def get_model_config(
-    agent_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep
-) -> dict[str, Any]:
+def get_model_config(agent_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep) -> dict[str, Any]:
     _ensure_agent(runtime, agent_id)
     versions = config_admin.list_versions(db, scope="agent", key=agent_id)
     return {
@@ -52,9 +50,7 @@ def get_model_config(
     }
 
 
-@router.post(
-    "/admin/model-configs/{agent_id}/versions", status_code=http_status.HTTP_201_CREATED
-)
+@router.post("/admin/model-configs/{agent_id}/versions", status_code=http_status.HTTP_201_CREATED)
 def create_model_config_version(
     agent_id: str,
     payload: ConfigVersionCreate,
@@ -108,9 +104,7 @@ def rollback_model_config(
 
 
 @router.delete("/admin/model-configs/{agent_id}/override")
-def reset_model_config(
-    agent_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep
-) -> dict[str, Any]:
+def reset_model_config(agent_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep) -> dict[str, Any]:
     """Drop the database override so the YAML file becomes the source again."""
     _ensure_agent(runtime, agent_id)
     config_admin.reset_to_yaml(db, runtime, scope="agent", key=agent_id)
@@ -130,12 +124,13 @@ def list_all_versions(
 
 
 @router.post("/admin/model-config-versions/{version_id}/activate")
-def activate_version(
-    version_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep
-) -> dict[str, Any]:
+def activate_version(version_id: str, db: SessionDep, runtime: RuntimeDep, user: AdminDep) -> dict[str, Any]:
     row = config_admin.activate_version(db, runtime, version_id=version_id, user_id=user.id)
     db.flush()
-    return {"version": config_admin.version_public(row), "applied": config_admin.agent_config_payload(runtime, row.key)}
+    return {
+        "version": config_admin.version_public(row),
+        "applied": config_admin.agent_config_payload(runtime, row.key),
+    }
 
 
 @router.get("/admin/providers")

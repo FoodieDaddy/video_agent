@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectCreate(BaseModel):
@@ -38,11 +38,51 @@ class ScriptUpdate(BaseModel):
     status: str | None = None
 
 
+class ScriptVersionCreate(BaseModel):
+    """新建或另存剧本版本；已有稿件必须提供当前基线，正文不自动去除空白。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=255)
+    script_text: str = Field(min_length=1, max_length=200_000)
+    logline: str = Field(default="", max_length=10_000)
+    synopsis: str = Field(default="", max_length=50_000)
+    base_script_id: str | None = Field(default=None, max_length=48)
+
+
+class ScriptRestoreRequest(BaseModel):
+    """恢复操作复制历史为新版本，不移动或覆盖历史行。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_script_id: str = Field(min_length=1, max_length=48)
+
+
+class ScriptAssistRequest(BaseModel):
+    """AI 只基于已保存版本执行；续写拼接由应用用例负责。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["polish", "continue"]
+    base_script_id: str = Field(min_length=1, max_length=48)
+    instruction: str = Field(default="", max_length=8000)
+
+
 class CharacterUpdate(BaseModel):
     name: str | None = None
     summary: str | None = None
     appearance_keywords: list[str] | None = None
     profile: dict[str, Any] | None = None
+
+
+class DirectingRequest(BaseModel):
+    """可选导演创作要求；无请求体沿用项目默认值，显式基线用于拒绝旧稿任务。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_script_id: str | None = Field(default=None, min_length=1, max_length=48)
+    instruction: str = Field(default="", max_length=8000)
+    shots_target: int | None = Field(default=None, ge=1, le=120, strict=True)
 
 
 class CharacterImagesRequest(BaseModel):
@@ -56,6 +96,8 @@ class SceneUpdate(BaseModel):
 
 
 class ShotUpdate(BaseModel):
+    base_storyboard_id: str | None = Field(default=None, min_length=1, max_length=48)
+    base_shot_fingerprint: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
     action: str | None = None
     camera: dict[str, Any] | None = None
@@ -64,6 +106,16 @@ class ShotUpdate(BaseModel):
     visual_prompt: str | None = None
     negative_prompt: str | None = None
     scene_id: str | None = None
+
+
+class StoryboardRequest(BaseModel):
+    """分镜仅绑定当前剧本和导演版本；旧无请求体入口仍深化提示词。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_script_id: str | None = Field(default=None, min_length=1, max_length=48)
+    base_plan_id: str | None = Field(default=None, min_length=1, max_length=48)
+    refine_prompts: bool = Field(default=True, strict=True)
 
 
 class ReviewDecision(BaseModel):

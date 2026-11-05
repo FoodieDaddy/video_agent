@@ -1,0 +1,265 @@
+{
+  "date": "2026-11-05",
+  "verified_at": "2026-11-05T03:26:20+08:00",
+  "url": "http://127.0.0.1:8010/?mode=live#overview",
+  "scope": [
+    "global overview",
+    "global search",
+    "read-only story preview"
+  ],
+  "unchanged_scopes": [
+    "script editing and saving",
+    "module4 backend"
+  ],
+  "checks": {
+    "frontend_tests": 58,
+    "new_search_tests": 7,
+    "new_story_preview_tests": 1,
+    "quality_gate": "4/4",
+    "architecture_tests": 16,
+    "console_asset_tests": 3,
+    "type_checked_files": 5,
+    "full_backend_suite_rerun": false
+  },
+  "browser_assertions": {
+    "arrowDownWrap": true,
+    "arrowUpWrap": true,
+    "escapeSearch": true,
+    "keyboardNavigationSearch": true,
+    "mouseProjectSearch": true,
+    "noResultsDoesNotNavigate": true,
+    "savedStoryPreview": true,
+    "tabDismissesSearch": true,
+    "mainEntries": true,
+    "newProjectCancelled": true,
+    "popupAboveMain": true,
+    "controlK": true,
+    "desktopNav": true,
+    "enterDefaultsToFirstResult": true,
+    "metaK": true,
+    "mobileKeyboardNavigation": true,
+    "ime": {
+      "reopened": true,
+      "unchanged": true
+    },
+    "outside_click_and_route_dismiss": true
+  },
+  "final_layout": {
+    "viewports": [
+      {
+        "active": "global-search",
+        "backdropFilter": "blur(16px)",
+        "height": 700,
+        "inputFont": "16px",
+        "inputHeight": 44,
+        "optionsClickable": true,
+        "popupBackground": "rgba(255, 255, 255, 0.99)",
+        "popupLeft": 16,
+        "popupRight": 304,
+        "scrollWidth": 320,
+        "width": 320
+      },
+      {
+        "active": "global-search",
+        "backdropFilter": "blur(16px)",
+        "height": 844,
+        "inputFont": "16px",
+        "inputHeight": 44,
+        "optionsClickable": true,
+        "popupBackground": "rgba(255, 255, 255, 0.99)",
+        "popupLeft": 16,
+        "popupRight": 374,
+        "scrollWidth": 390,
+        "width": 390
+      },
+      {
+        "active": "global-search",
+        "backdropFilter": "blur(16px)",
+        "height": 1024,
+        "inputFont": "12px",
+        "inputHeight": 38,
+        "optionsClickable": true,
+        "popupBackground": "rgba(255, 255, 255, 0.99)",
+        "popupLeft": 183,
+        "popupRight": 543,
+        "scrollWidth": 768,
+        "width": 768
+      },
+      {
+        "active": "global-search",
+        "backdropFilter": "blur(16px)",
+        "height": 1080,
+        "inputFont": "12px",
+        "inputHeight": 38,
+        "optionsClickable": true,
+        "popupBackground": "rgba(255, 255, 255, 0.99)",
+        "popupLeft": 815,
+        "popupRight": 1175,
+        "scrollWidth": 1440,
+        "width": 1440
+      }
+    ],
+    "390": {
+      "entryBottom": 717.8671875,
+      "entryTop": 673.8671875,
+      "projectTitleTop": 561.984375,
+      "statsNotes": [
+        "部作品",
+        "协作分工",
+        "待处理",
+        "已归档"
+      ],
+      "status": "剧本已保存",
+      "width": 390
+    },
+    "1440": {
+      "entryBottom": 705.4921875,
+      "entryTop": 669.4921875,
+      "projectTitleTop": 541.6953125,
+      "statsNotes": [
+        "部作品",
+        "协作分工",
+        "待处理",
+        "已归档"
+      ],
+      "status": "剧本已保存",
+      "width": 1440
+    },
+    "uncaught_page_error_count": 0,
+    "final_popup_style_verified": true
+  },
+  "data_and_runtime": {
+    "project_ids": [
+      "proj_1c4e7aafd77e",
+      "proj_5d06f1cbd290",
+      "proj_8d71c0147507",
+      "proj_a18b7154ab8c",
+      "proj_c82fd299a741",
+      "proj_e0340b15f68f"
+    ],
+    "project_tables_compared": 36,
+    "project_data_unchanged": true,
+    "active_tasks": 0,
+    "uploaded_files": [
+      {
+        "document_id": "doc_b67c9803367c",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_293cb55e0819",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_71deb48b5544",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_4a941acbd183",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_900000d7f6c3",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_cef64f77b49b",
+        "checksum_matches": true
+      }
+    ],
+    "health": {
+      "/health": 200,
+      "/": 200,
+      "/docs": 200
+    },
+    "listener_pids": [
+      11482
+    ]
+  },
+  "business_writes": 0,
+  "model_calls": 0,
+  "test_projects_created": 0,
+  "cleanup": {
+    "all_owned_browser_sessions_closed": true,
+    "active_browser_sessions": 0,
+    "intermediate_screenshots_removed": true,
+    "evidence_preserved": true
+  },
+  "module4": {
+    "status": "paused_pending_scope",
+    "pending_scopes": [
+      "导演方案，并明确是否包含分镜",
+      "人物和场景视觉资产"
+    ]
+  },
+  "evidence_dir": "/Users/happy/.codex/visualizations/2026/11/05/overview-navigation",
+  "evidence_files": [
+    {
+      "name": "before-desktop-overview.png",
+      "sha256": "3a599dc5794f64c1512e7d7a95bf0700858b22b966624b03d3693f7388a2565b"
+    },
+    {
+      "name": "before-mobile-overview.png",
+      "sha256": "730a76df5e82ac9ea3450c34ddc5f2c3d44d1f80aaf6af57d31190379c0d77dd"
+    },
+    {
+      "name": "before-story-preview.png",
+      "sha256": "1bcb7d6a169a0fdede3f62fdd18fa83a1d88d30af3545a54f3f5633fda5eee32"
+    },
+    {
+      "name": "console-assets-tests.log",
+      "sha256": "95da7a5cb5529c192e67de5657741832994fc52e5ec407869f1f72b07f9b11d8"
+    },
+    {
+      "name": "data-runtime.json",
+      "sha256": "90a55dd8e02104662d8a35d27d686505b56d1fb181e88a23746de2b9a0035243"
+    },
+    {
+      "name": "desktop-overview.png",
+      "sha256": "3c8beaadad35147189fc0ae819fc67c7cc7266f375c3510013e0949c66f67eb2"
+    },
+    {
+      "name": "desktop-search.png",
+      "sha256": "0d659f75c534f77053ad086f5bd6690d74365ae734ce2b4422429a438d0d7e99"
+    },
+    {
+      "name": "entry-behavior.json",
+      "sha256": "9336b8b4f13aa86a96de32e637297624b0d8300e0c986d7fe622e4f56c9e7ad3"
+    },
+    {
+      "name": "frontend-tests.log",
+      "sha256": "27270dc1fada630c3f73653a5dd4893cbf2ff8773bbfc809b18239d4d8868952"
+    },
+    {
+      "name": "keyboard-final.json",
+      "sha256": "7d5ba1d4c5b4854ca41116c8bac37707509c8f83810143c86dc20f74174fc747"
+    },
+    {
+      "name": "layout-final.json",
+      "sha256": "be4c523032da83d1b4f895fbcdfcc4f5b6824f1964ad8c8499950316f7cda852"
+    },
+    {
+      "name": "mobile-overview.png",
+      "sha256": "4423a76003004d51a7a3f8d2d217eaa673af3e3cac66db44ba493f3887421888"
+    },
+    {
+      "name": "mobile-search.png",
+      "sha256": "66e02cec1d0d8f57f20ace3e56ed339631cc6714f8eb51013f410ddf5efbb7c0"
+    },
+    {
+      "name": "mobile-story-preview.png",
+      "sha256": "af0004409fc02a34386ad4682ac599ea5bfacbc1e6dd0f515b338ad59a04f1c2"
+    },
+    {
+      "name": "original-project-baseline.json",
+      "sha256": "e8f791b77242e53203c627cb14530cc71c91b793457070d54bde3607fee95e7d"
+    },
+    {
+      "name": "quality-gate.log",
+      "sha256": "3bd0b6c68e2c52dc91bc1d77eed11a209ccda9d29dc1d6739bb2237dcc19749a"
+    },
+    {
+      "name": "search-behavior.json",
+      "sha256": "2e468d9bee1c689c8b98f7acc77710ba2d9f18c5cace6c934d576f7d1ef64d21"
+    }
+  ]
+}

@@ -8,11 +8,12 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select
 
 from app.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
-from app.api.schemas import ShotUpdate
+from app.api.schemas import DirectingRequest, ShotUpdate, StoryboardRequest
 from app.api.serializers import board_public, film_public, plan_public
-from app.core.exceptions import NotFoundError
 from app.models.production import DirectingPlan, EditingProject, Shot, Storyboard, VideoGeneration
-from app.services import media, pipeline, quality, reviews
+from app.modules.platform.exceptions import NotFoundError
+from app.modules.production import public as production_module
+from app.modules.reviews import public as reviews
 
 router = APIRouter(tags=["production"])
 
@@ -24,11 +25,16 @@ async def direct_project(
     runtime: RuntimeDep,
     db: SessionDep,
     user: UserDep,
+    payload: DirectingRequest | None = None,
     wait: bool = Query(default=False),
 ) -> dict[str, Any]:
     project = owner_project(db, project_id, user)
+    # 在排队前拒绝旧基线或非法项目默认值；任务执行时仍重新核对，不能只依赖页面。
+    request = production_module.validate_directing_request(
+        db, project=project, **(payload.model_dump() if payload else {})
+    )
     return await run_task(
-        db, runtime, project=project, type="directing", user_id=user.id, wait=wait
+        db, runtime, project=project, type="directing", payload=request, user_id=user.id, wait=wait
     )
 
 
@@ -43,18 +49,33 @@ def get_directing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, A
         )
     )
     return {
-        "plan": plan_public(rows[0] if rows else None),
+        "plan": plan_public(rows[0], source=production_module.directing_source_status(db, rows[0]))
+        if rows
+        else None,
         "versions": [
             {
                 "id": row.id,
                 "version": row.version,
                 "status": row.status,
                 "approved": row.approved,
+                "project_id": row.project_id,
+                "agent_id": row.agent_id,
+                "model_id": row.model_id,
+                "prompt_version": row.prompt_version,
+                "config_version": row.config_version,
                 "created_at": row.created_at.isoformat() if row.created_at else None,
+                **production_module.directing_source_status(db, row),
             }
             for row in rows
         ],
     }
+
+
+@router.get("/directing-plans/{plan_id}")
+def get_directing_plan(plan_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
+    plan = production_module.get_directing_plan(db, plan_id)
+    project_scope(db, plan.project_id, user)
+    return plan_public(plan, source=production_module.directing_source_status(db, plan))
 
 
 # ---------------------------------------------------------------- storyboard
@@ -64,11 +85,15 @@ async def build_storyboard(
     runtime: RuntimeDep,
     db: SessionDep,
     user: UserDep,
+    payload: StoryboardRequest | None = None,
     wait: bool = Query(default=False),
 ) -> dict[str, Any]:
     project = owner_project(db, project_id, user)
+    request = production_module.validate_storyboard_request(
+        db, project=project, **(payload.model_dump() if payload else {})
+    )
     return await run_task(
-        db, runtime, project=project, type="storyboard", user_id=user.id, wait=wait
+        db, runtime, project=project, type="storyboard", payload=request, user_id=user.id, wait=wait
     )
 
 
@@ -77,9 +102,7 @@ def get_storyboard(project_id: str, db: SessionDep, user: UserDep) -> dict[str, 
     project = project_scope(db, project_id, user)
     rows = list(
         db.scalars(
-            select(Storyboard)
-            .where(Storyboard.project_id == project.id)
-            .order_by(Storyboard.version.desc())
+            select(Storyboard).where(Storyboard.project_id == project.id).order_by(Storyboard.version.desc())
         )
     )
     return {
@@ -90,6 +113,16 @@ def get_storyboard(project_id: str, db: SessionDep, user: UserDep) -> dict[str, 
                 "version": row.version,
                 "status": row.status,
                 "approved": row.approved,
+                "directing_plan_id": row.directing_plan_id,
+                "project_id": row.project_id,
+                "agent_id": row.agent_id,
+                "model_id": row.model_id,
+                "config_version": row.config_version,
+                "title": row.title,
+                "notes": row.notes,
+                "prompt_version": row.prompt_version,
+                "shot_count": len(production_module.list_shots(db, project.id, board=row)),
+                **production_module.storyboard_source_status(db, row),
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             }
             for row in rows
@@ -97,19 +130,38 @@ def get_storyboard(project_id: str, db: SessionDep, user: UserDep) -> dict[str, 
     }
 
 
+@router.get("/storyboards/{board_id}")
+def get_storyboard_version(board_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
+    board = production_module.get_storyboard(db, board_id)
+    project_scope(db, board.project_id, user)
+    return board_public(db, board)
+
+
+@router.post("/projects/{project_id}/storyboards/{board_id}/review")
+def submit_storyboard_review(project_id: str, board_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
+    project = owner_project(db, project_id, user)
+    board = production_module.get_storyboard(db, board_id)
+    if board.project_id != project.id:
+        raise NotFoundError("分镜版本不存在")
+    review = reviews.create_review(
+        db, project=project, stage="storyboard", target_type="storyboard", target_id=board.id
+    )
+    return reviews.review_public(db, review)
+
+
 # -------------------------------------------------------------------- shots
 @router.get("/projects/{project_id}/shots")
 def list_shots(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = pipeline.list_shots(db, project.id)
-    return {"items": [pipeline.public_shot(db, row) for row in rows], "count": len(rows)}
+    rows = production_module.list_shots(db, project.id)
+    return {"items": [production_module.public_shot(db, row) for row in rows], "count": len(rows)}
 
 
 @router.get("/shots/{shot_id}")
 def get_shot(shot_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     shot = _load_shot(db, shot_id)
     project_scope(db, shot.project_id, user)
-    return pipeline.public_shot(db, shot)
+    return production_module.public_shot(db, shot)
 
 
 @router.patch("/shots/{shot_id}")
@@ -122,9 +174,9 @@ def update_shot(
     shot = _load_shot(db, shot_id)
     owner_project(db, shot.project_id, user)
     data = payload.model_dump(exclude_unset=True)
-    pipeline.update_shot(db, shot=shot, **data)
+    production_module.update_shot(db, shot=shot, **data)
     db.flush()
-    return pipeline.public_shot(db, shot)
+    return production_module.public_shot(db, shot)
 
 
 @router.post("/shots/{shot_id}/approve")
@@ -133,7 +185,7 @@ def approve_shot(shot_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = owner_project(db, shot.project_id, user)
     reviews.approve_shot(db, project, shot)
     db.flush()
-    return pipeline.public_shot(db, shot)
+    return production_module.public_shot(db, shot)
 
 
 @router.post("/shots/{shot_id}/generate")
@@ -173,11 +225,11 @@ async def generate_all_shot_videos(
 def shot_versions(shot_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     shot = _load_shot(db, shot_id)
     project_scope(db, shot.project_id, user)
-    rows = media.video_generations(db, shot.id)
+    rows = production_module.video_generations(db, shot.id)
     return {
         "shot_id": shot.id,
         "selected_video_id": shot.selected_video_id,
-        "items": [media.video_public(db, row) for row in rows],
+        "items": [production_module.video_public(db, row) for row in rows],
         "count": len(rows),
     }
 
@@ -194,11 +246,11 @@ def select_shot_version(
     generation = db.get(VideoGeneration, video_id)
     if generation is None:
         raise NotFoundError("视频版本不存在", details={"video_id": video_id})
-    media.select_video(db, project=project, shot=shot, generation=generation)
+    production_module.select_video(db, project=project, shot=shot, generation=generation)
     db.flush()
     return {
-        "shot": pipeline.public_shot(db, shot),
-        "video": media.video_public(db, generation),
+        "shot": production_module.public_shot(db, shot),
+        "video": production_module.video_public(db, generation),
     }
 
 
@@ -218,8 +270,8 @@ async def generate_audio(
 @router.get("/projects/{project_id}/audio")
 def list_audio(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = media.audio_tracks(db, project.id)
-    return {"items": [media.audio_public(db, row) for row in rows], "count": len(rows)}
+    rows = production_module.audio_tracks(db, project.id)
+    return {"items": [production_module.audio_public(db, row) for row in rows], "count": len(rows)}
 
 
 # ------------------------------------------------------------------ editing
@@ -238,7 +290,7 @@ async def build_editing(
 @router.get("/projects/{project_id}/editing")
 def get_editing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    editing = media.latest_editing(db, project.id)
+    editing = production_module.latest_editing(db, project.id)
     versions = list(
         db.scalars(
             select(EditingProject)
@@ -247,7 +299,7 @@ def get_editing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any
         )
     )
     return {
-        "editing": media.editing_public(db, editing) if editing else None,
+        "editing": production_module.editing_public(db, editing) if editing else None,
         "versions": [
             {
                 "id": row.id,
@@ -258,7 +310,7 @@ def get_editing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any
             }
             for row in versions
         ],
-        "film": film_public(db, media.latest_film_asset(db, project.id)),
+        "film": film_public(db, production_module.latest_film_asset(db, project.id)),
     }
 
 
@@ -289,7 +341,7 @@ async def export_project(
 @router.get("/projects/{project_id}/export")
 def get_export(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    film = media.latest_film_asset(db, project.id)
+    film = production_module.latest_film_asset(db, project.id)
     return {"film": film_public(db, film), "ready": film is not None}
 
 
@@ -305,18 +357,16 @@ async def evaluate(
     project = owner_project(db, project_id, user)
     # The evaluation stage is fixed at "final" for the report card; keeping the
     # task payload empty lets the stage router resolve the handler by task type.
-    return await run_task(
-        db, runtime, project=project, type="evaluation", user_id=user.id, wait=wait
-    )
+    return await run_task(db, runtime, project=project, type="evaluation", user_id=user.id, wait=wait)
 
 
 @router.get("/projects/{project_id}/evaluation")
 def get_evaluation(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    run = quality.latest_evaluation(db, project.id)
+    run = production_module.latest_evaluation(db, project.id)
     return {
-        "evaluation": quality.evaluation_public(db, run) if run else None,
-        "metrics": quality.collect_metrics(db, project),
+        "evaluation": production_module.evaluation_public(db, run) if run else None,
+        "metrics": production_module.collect_metrics(db, project),
     }
 
 

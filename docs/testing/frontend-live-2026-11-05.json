@@ -1,0 +1,140 @@
+{
+  "before_project_ids": [],
+  "project": {
+    "id": "proj_c82fd299a741",
+    "name": "前端联调验收 · 2026-11-05",
+    "description": "真实后端接口验收专用：人工夹具、编辑保存与审核验证，不调用模型。",
+    "owner_id": "user_demo",
+    "status": "draft",
+    "language": "zh",
+    "genre": "剧情 / 文艺",
+    "aspect_ratio": "16:9",
+    "budget_limit_usd": 0.0,
+    "spent_usd": 0.0,
+    "settings": {
+      "aspect_ratio": "16:9"
+    },
+    "config_version": "",
+    "created_at": "2026-11-04T16:02:25.640598",
+    "updated_at": "2026-11-04T16:02:25.640602"
+  },
+  "fixture": {
+    "script_id": "script_c1b67ec3e91d",
+    "character_id": "char_54042ddcca10",
+    "character_profile_id": "cprofile_db9788670a32",
+    "scene_id": "scene_b720a02ce7db",
+    "scene_profile_id": "sprofile_741a7190d9c9",
+    "approve_review_id": "review_5d542bf59b13",
+    "reject_review_id": "review_245cdfb14935",
+    "source": "manual_fixture",
+    "workflow_created": false
+  },
+  "edited_get_results": {
+    "script": {
+      "id": "script_c1b67ec3e91d",
+      "title": "联调验收剧本（已保存）",
+      "status": "edited",
+      "version": 1
+    },
+    "character": {
+      "id": "char_54042ddcca10",
+      "name": "联调人物·已保存",
+      "summary": "人物摘要由新版前端编辑，并保存到真实数据库。"
+    },
+    "scene": {
+      "id": "scene_b720a02ce7db",
+      "name": "联调场景·已保存",
+      "summary": "场景摘要通过真实 PATCH 接口保存，刷新后应保持一致。"
+    }
+  },
+  "duplicate_review": {
+    "status": 409,
+    "code": "conflict",
+    "message": "该审核已经处理"
+  },
+  "review_get_results": [
+    {
+      "id": "review_5d542bf59b13",
+      "stage": "characters_scenes",
+      "status": "approved",
+      "comment": "真实联调通过：人物与场景编辑结果已核对，审核只保存结论，不续跑。",
+      "reviewer_id": "user_demo",
+      "reviewed_at": "2026-11-04T16:05:06.797634"
+    },
+    {
+      "id": "review_245cdfb14935",
+      "stage": "storyboard",
+      "status": "rejected",
+      "comment": "真实联调驳回：人工测试记录，用于验证退回状态与意见持久化。",
+      "reviewer_id": "user_demo",
+      "reviewed_at": "2026-11-04T16:05:20.933110"
+    }
+  ],
+  "database_verification": {
+    "project_status": "characters_ready",
+    "character_approved_version": 1,
+    "scene_approved_version": 1,
+    "character_profile_approved": true,
+    "scene_profile_approved": true,
+    "counts": {
+      "scripts": 1,
+      "characters": 1,
+      "character_profiles": 1,
+      "scenes": 1,
+      "scene_profiles": 1,
+      "reviews": 2,
+      "tasks": 0,
+      "workflow_runs": 0,
+      "agent_runs": 0,
+      "model_call_logs": 0
+    }
+  },
+  "project_after": {
+    "id": "proj_c82fd299a741",
+    "name": "前端联调验收 · 2026-11-05",
+    "owner_id": "user_demo",
+    "status": "characters_ready",
+    "settings": {
+      "aspect_ratio": "16:9",
+      "ui_acceptance": {
+        "date": "2026-11-05",
+        "source": "manual_fixture",
+        "no_model_calls": true
+      }
+    },
+    "spent_usd": 0.0
+  },
+  "date": "2026-11-05",
+  "base_url": "http://127.0.0.1:8010",
+  "default_mode": "live",
+  "browser_checks": {
+    "root_without_mode_is_live": true,
+    "created_in_browser": true,
+    "script_edited_in_browser": true,
+    "character_edited_in_browser": true,
+    "scene_edited_in_browser": true,
+    "edits_survive_reload_and_get": true,
+    "approve_in_browser": true,
+    "reject_in_browser": true,
+    "reviews_survive_reload_and_get": true,
+    "demo_explicit_and_survives_reload": true,
+    "connection_failure_stays_live_until_explicit_demo": true,
+    "error_fallback_demo_url_survives_reload": true,
+    "real_cover_empty_state": true,
+    "fresh_browser_session_reads_persisted_script": true,
+    "real_cover_css_applies": true
+  },
+  "tests": {
+    "frontend": {
+      "passed": 25
+    },
+    "backend_api": {
+      "passed": 8,
+      "warnings": 1
+    }
+  },
+  "model_calls_for_project": 0,
+  "fixture_origin": "人工准备的审核/档案数据，不是生成链路产物",
+  "browser_closed": true,
+  "single_instance_reused": true
+}

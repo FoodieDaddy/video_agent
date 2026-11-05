@@ -1,23 +1,10 @@
-"""Declarative base and shared column mixins."""
+"""兼容旧导入路径；唯一实现位于 ``app.modules.platform.persistence.base``。
 
-from __future__ import annotations
+模块别名保留类、缓存、全局资源和 monkeypatch 的对象身份，不复制实现。
+"""
 
-from datetime import datetime
+import sys
+from importlib import import_module
 
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from app.core.ids import new_id, utcnow
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
-
-
-def id_column(prefix: str) -> Mapped[str]:
-    return mapped_column(String(48), primary_key=True, default=lambda: new_id(prefix))
+_implementation = import_module("app.modules.platform.persistence.base")
+sys.modules[__name__] = _implementation

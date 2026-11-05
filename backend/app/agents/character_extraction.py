@@ -1,62 +1,7 @@
-"""Character Extraction Agent: find characters and relationships in the script."""
+"""旧导入路径兼容入口；实现已迁入业务模块。"""
 
-from __future__ import annotations
+import sys
+from importlib import import_module
 
-from typing import Any, ClassVar
-
-from app.agents.base import AgentContext, StructuredLLMAgent
-from app.schemas.character import (
-    CharacterCandidate,
-    CharacterExtractionInput,
-    CharacterExtractionOutput,
-)
-from app.utils import narrative
-
-
-class CharacterExtractionAgent(StructuredLLMAgent):
-    agent_id: ClassVar[str] = "character_extraction"
-    input_model: ClassVar[type] = CharacterExtractionInput
-    output_model: ClassVar[type] = CharacterExtractionOutput
-    schema_name: ClassVar[str] = "character_extraction"
-
-    def build_variables(self, inputs: CharacterExtractionInput, ctx: AgentContext) -> dict[str, Any]:
-        chapters = inputs.chapter_texts or []
-        joined = "\n\n".join(f"【{item.get('title', '')}】\n{item.get('content', '')}" for item in chapters)
-        return {
-            "chapter_texts": chapters,
-            "script": inputs.script,
-            "language": inputs.language,
-            "source_excerpt": joined[:20000],
-        }
-
-    def postprocess(
-        self, output: CharacterExtractionOutput, inputs: CharacterExtractionInput, ctx: AgentContext
-    ) -> CharacterExtractionOutput:
-        seen: set[str] = set()
-        unique = []
-        for candidate in output.characters:
-            name = (candidate.name or "").strip()
-            if not name or name in seen or name == "未知":
-                continue
-            seen.add(name)
-            unique.append(candidate)
-        if not unique:
-            chapter_text = "\n".join(str(item.get("content", "")) for item in inputs.chapter_texts)
-            for name in narrative.extract_character_names(chapter_text, limit=3) or ["主角"]:
-                if name in seen:
-                    continue
-                seen.add(name)
-                unique.append(
-                    CharacterCandidate(
-                        name=name,
-                        role_hint="protagonist" if not unique else "supporting",
-                        evidence=f"{name} 在原文中反复出现",
-                    )
-                )
-        output.characters = unique
-        output.relationships = [
-            relation
-            for relation in output.relationships
-            if relation.source in seen and relation.target in seen
-        ]
-        return output
+_module = import_module("app.modules.characters.infrastructure.agents.character_extraction")
+sys.modules[__name__] = _module

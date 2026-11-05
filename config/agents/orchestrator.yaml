@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 为项目生成编排计划（节点顺序、人工审核点），实际执行由工作流引擎负责。
 model:
-  provider: qwen
-  model_id: qwen3.8-27b
+  provider: fast_gateway
+  model_id: env:FAST_GATEWAY_MODEL
   capability: text_reasoning
-  fallback_provider: qwen
-  fallback_model_id: qwen3.8-27b
+  fallback_provider: null
+  fallback_model_id: null
   provider_options: {}
 generation:
   temperature: 0.2

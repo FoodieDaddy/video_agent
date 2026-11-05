@@ -12,8 +12,11 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.project import Asset, Project
-from app.services import media, pipeline, quality, reviews, tasks, workflow
-from app.services.assets import asset_public
+from app.modules.assets.public import asset_public
+from app.modules.production import public as production_module
+from app.modules.reviews import public as reviews
+from app.modules.workflow import public as workflow
+from app.modules.workflow.public import tasks
 
 
 def project_public(project: Project) -> dict[str, Any]:
@@ -40,12 +43,17 @@ def board_public(db: Session, board) -> dict[str, Any] | None:
         return None
     return {
         "id": board.id,
+        "project_id": board.project_id,
         "version": board.version,
         "status": board.status,
         "approved": board.approved,
+        "title": board.title,
+        "notes": board.notes,
+        "directing_plan_id": board.directing_plan_id,
+        **production_module.storyboard_source_status(db, board),
         "shots": [
-            pipeline.public_shot(db, shot)
-            for shot in pipeline.list_shots(db, board.project_id, board=board)
+            production_module.public_shot(db, shot)
+            for shot in production_module.list_shots(db, board.project_id, board=board)
         ],
         "agent_id": board.agent_id,
         "model_id": board.model_id,
@@ -55,11 +63,12 @@ def board_public(db: Session, board) -> dict[str, Any] | None:
     }
 
 
-def plan_public(plan) -> dict[str, Any] | None:
+def plan_public(plan, *, source: dict[str, Any] | None = None) -> dict[str, Any] | None:
     if plan is None:
         return None
     return {
         "id": plan.id,
+        "project_id": plan.project_id,
         "version": plan.version,
         "status": plan.status,
         "approved": plan.approved,
@@ -67,7 +76,9 @@ def plan_public(plan) -> dict[str, Any] | None:
         "agent_id": plan.agent_id,
         "model_id": plan.model_id,
         "config_version": plan.config_version,
+        "prompt_version": plan.prompt_version,
         "created_at": plan.created_at.isoformat() if plan.created_at else None,
+        **(source or {}),
     }
 
 
@@ -78,18 +89,18 @@ def film_public(db: Session, asset: Asset | None) -> dict[str, Any] | None:
 def dashboard(db: Session, project: Project) -> dict[str, Any]:
     """Everything the project home page needs in one request."""
     run = workflow.latest_run(db, project.id)
-    editing = media.latest_editing(db, project.id)
-    evaluation = quality.latest_evaluation(db, project.id)
+    editing = production_module.latest_editing(db, project.id)
+    evaluation = production_module.latest_evaluation(db, project.id)
     return {
         "project": project_public(project),
-        "summary": pipeline.project_summary(db, project),
+        "summary": production_module.project_summary(db, project),
         "workflow": workflow.run_public(db, run) if run is not None else None,
         "pending_reviews": [
             reviews.review_public(db, review)
             for review in reviews.list_reviews(db, project.id, status="pending")
         ],
         "tasks": [tasks.task_public(task) for task in tasks.list_tasks(db, project.id, limit=10)],
-        "editing": media.editing_public(db, editing) if editing is not None else None,
-        "film": film_public(db, media.latest_film_asset(db, project.id)),
-        "evaluation": quality.evaluation_public(db, evaluation) if evaluation is not None else None,
+        "editing": production_module.editing_public(db, editing) if editing is not None else None,
+        "film": film_public(db, production_module.latest_film_asset(db, project.id)),
+        "evaluation": production_module.evaluation_public(db, evaluation) if evaluation is not None else None,
     }

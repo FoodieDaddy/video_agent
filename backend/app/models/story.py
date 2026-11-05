@@ -37,7 +37,11 @@ class StoryChapter(Base, TimestampMixin):
 
 
 class Script(Base, TimestampMixin):
-    """An immutable script version.  Structured content lives in ``content``."""
+    """一份剧本版本，正文与结构化内容保存在content。
+
+    剧本工作区的新接口只追加版本；旧PATCH仍保留原位编辑兼容语义，不能将所有行
+    视为技术上不可变。流程指纹用于识别这类原位内容变更。
+    """
 
     __tablename__ = "scripts"
 

@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "ShotStrategy": {
+      "properties": {
+        "total_shots": {
+          "default": 6,
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Total Shots",
+          "type": "integer"
+        },
+        "avg_duration_seconds": {
+          "default": 5.0,
+          "exclusiveMinimum": 0,
+          "title": "Avg Duration Seconds",
+          "type": "number"
+        },
+        "pacing_notes": {
+          "default": "",
+          "title": "Pacing Notes",
+          "type": "string"
+        },
+        "coverage_notes": {
+          "default": "",
+          "title": "Coverage Notes",
+          "type": "string"
+        }
+      },
+      "title": "ShotStrategy",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "visual_style": {
+      "minLength": 1,
+      "pattern": "\\S",
+      "title": "Visual Style",
+      "type": "string"
+    },
+    "color_palette": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Color Palette",
+      "type": "array"
+    },
+    "lighting_style": {
+      "default": "",
+      "title": "Lighting Style",
+      "type": "string"
+    },
+    "camera_language": {
+      "default": "",
+      "title": "Camera Language",
+      "type": "string"
+    },
+    "pacing": {
+      "default": "",
+      "title": "Pacing",
+      "type": "string"
+    },
+    "narrative_arc": {
+      "default": "",
+      "title": "Narrative Arc",
+      "type": "string"
+    },
+    "shot_strategy": {
+      "$ref": "#/$defs/ShotStrategy"
+    },
+    "continuity_rules": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Continuity Rules",
+      "type": "array"
+    },
+    "scenes_order": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Scenes Order",
+      "type": "array"
+    },
+    "notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+    }
+  },
+  "required": [
+    "visual_style"
+  ],
+  "title": "DirectingPlanOutput",
+  "type": "object"
+}

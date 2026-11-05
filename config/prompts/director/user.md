@@ -3,7 +3,10 @@
 人物数量：$character_count
 场景数量：$scene_count
 
-剧本：
+创作要求（可为空）：
+$instruction
+
+剧本（含已保存正文）：
 $script
 
 人物：

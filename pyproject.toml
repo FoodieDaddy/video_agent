@@ -47,4 +47,10 @@ ignore = ["E501", "B008"]
 [tool.mypy]
 python_version = "3.11"
 mypy_path = "backend"
-ignore_missing_imports = true
+# 渐进门禁：先严格检查纯契约（含 public 导出）与已有纯领域规则。
+# 扩大范围时应先补齐类型，不使用 ignore_errors 掩盖边界。
+files = ["backend/app/modules/contracts", "backend/app/modules/reviews/domain"]
+namespace_packages = true
+explicit_package_bases = true
+strict = true
+ignore_missing_imports = false

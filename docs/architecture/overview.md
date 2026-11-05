@@ -5,6 +5,12 @@ novel into a rendered short film. This document explains the layers, the runtime
 flow, and the invariants the code relies on. Decisions with trade-offs are recorded in
 [`docs/decisions/`](../decisions/README.md).
 
+当前已实施第一批逻辑模块化，源码入口见[模块导航](../../backend/app/modules/README.md)，
+已迁移范围与后续阶段见[重构进度](refactoring-progress.md)。本文下方保留的
+`app.services`、`app.core`、`app.agents`、`app.providers` 等旧路径现在主要作为
+兼容入口；其唯一实现位于 `app.modules`。业务 ORM 和 Pydantic Schema 暂保留
+原定义，workspace 和完整仓储/DTO 解耦尚未实施。
+
 ## 1. Design goals
 
 | Goal | Consequence in the code |
@@ -22,16 +28,16 @@ flow, and the invariants the code relies on. Decisions with trade-offs are recor
 HTTP (FastAPI, /api/v1)                web/ console (vanilla JS, no build)
         │                                        │
         ▼                                        ▼  fetch + SSE
-api/routes/*  ──►  services/*  ──►  workflow engine ──►  tasks runner
-                        │                    │                  │
-                        ▼                    ▼                  ▼
-                  agents/* (BaseAgent)   reviews / gates    task_events
-                        │
-                        ▼
-                  providers/* (mock, openai_chat)
-                        │
-                        ▼
-        config store (YAML + DB overrides) · SQLAlchemy models · storage (local/S3)
+api/routes/* ──► modules/<business>/public ──► application use cases / queries
+                         │                               │
+                         ▼                               ▼
+               workflow / reviews                  ai_runtime execution
+                         │                               │
+                         ▼                               ▼
+            platform task runner             registered business Agent → Provider
+
+platform: config / Base / Session / storage / FFmpeg
+bootstrap: 13 business roles → 17 executable Agent IDs
 ```
 
 ### 2.1 `core/`
@@ -112,6 +118,9 @@ Services take `(db, runtime, *, project=..., task=..., user_id=...)` and emit ta
 they never read HTTP concerns.
 
 ## 3. Workflow engine
+
+New runs persist a JSON `workflow_definition` snapshot in `workflow_runs.state`; resume prefers it over mutable YAML. Legacy runs without a snapshot retain the previous current-config fallback.
+
 
 Workflow definitions are YAML (`config/workflows/*.yaml`) with an ordered `nodes` list:
 

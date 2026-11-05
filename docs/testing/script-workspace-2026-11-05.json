@@ -1,0 +1,82 @@
+{
+  "date": "2026-11-05",
+  "project_id": "proj_8d71c0147507",
+  "project_name": "剧本工作区验收 · 2026-11-05",
+  "backend_tests": 221,
+  "frontend_tests": 38,
+  "module2_original_offline": "8/8",
+  "module3_offline": "10/10",
+  "workspace_check_offline": "10/10",
+  "workspace_check_live": "10/10",
+  "browser_actions": [
+    "manual_create",
+    "versioned_save",
+    "markdown_import",
+    "restore_v1_to_v4",
+    "real_polish_to_v5",
+    "real_continue_to_v6"
+  ],
+  "audit": {
+    "provider": "fast_gateway",
+    "model": "gpt-6.1-terra",
+    "versions": [
+      {
+        "id": "script_ee83d3f11284",
+        "version": 1,
+        "source": "manual",
+        "text_length": 55
+      },
+      {
+        "id": "script_49a87ab50677",
+        "version": 2,
+        "source": "manual",
+        "text_length": 74
+      },
+      {
+        "id": "script_58a32922e370",
+        "version": 3,
+        "source": "import",
+        "text_length": 54
+      },
+      {
+        "id": "script_67f785bfb176",
+        "version": 4,
+        "source": "restore",
+        "text_length": 55
+      },
+      {
+        "id": "script_acd8f6184219",
+        "version": 5,
+        "source": "polish",
+        "text_length": 62
+      },
+      {
+        "id": "script_c7dad4cd5346",
+        "version": 6,
+        "source": "continue",
+        "text_length": 109
+      }
+    ],
+    "task_count": 2,
+    "agent_run_count": 2,
+    "model_log_count": 2,
+    "workflow_count": 0,
+    "attempts": 2,
+    "tokens_in": 41434,
+    "tokens_out": 1345,
+    "original_versions_preserved": true,
+    "continuation_preserved_prefix": true
+  },
+  "isolated_live_check": {
+    "agent_runs": 2,
+    "model_logs": 2,
+    "provider": "fast_gateway",
+    "model": "gpt-6.1-terra",
+    "tokens_in": 41298,
+    "tokens_out": 1024,
+    "attempts": 2
+  },
+  "metadata_preservation_regression": true,
+  "program_pid": 96367,
+  "test_browser_closed": true
+}

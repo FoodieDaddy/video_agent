@@ -13,10 +13,7 @@ from app.providers.openai_compat import OpenAIVideosProvider, _extract_json
 
 def test_extract_json_ignores_reasoning_trace():
     """A local reasoning model narrates before answering and closes with ``</think>``."""
-    text = (
-        'The user wants JSON only, specifically {"ok": true} and nothing else.\n'
-        '</think>{"ok": true}'
-    )
+    text = 'The user wants JSON only, specifically {"ok": true} and nothing else.\n</think>{"ok": true}'
     assert _extract_json(text) == {"ok": True}
 
 

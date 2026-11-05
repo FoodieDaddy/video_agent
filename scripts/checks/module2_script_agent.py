@@ -7,10 +7,10 @@ r"""模块 2：剧本解析（script agent）—— 小说章节 -> 结构化剧
 
 模块边界（本文件覆盖的代码，按调用顺序）：
 
-    1. app/services/pipeline.py::generate_script     从章节取文本 -> 调智能体 -> 写 Script/StoryEvent
-    2. app/agents/script.py::ScriptAgent             变量组装（chapters/source_excerpt）与 postprocess 兜底
-    3. app/agents/base.py::StructuredLLMAgent.invoke  结构化调用：schema 校验 -> 修复重试 -> 兜底模型
-    4. app/services/agent_runner.py::run_agent        执行外壳：AgentRun / ModelCallLog / 预算 / 评估
+    1. app/modules/story/application/use_cases.py::generate_script     从章节取文本 -> 调智能体 -> 写 Script/StoryEvent
+    2. app/modules/story/infrastructure/agents/script.py::ScriptAgent             变量组装（chapters/source_excerpt）与 postprocess 兜底
+    3. app/modules/ai_runtime/base.py::StructuredLLMAgent.invoke  结构化调用：schema 校验 -> 修复重试 -> 兜底模型
+    4. app/modules/ai_runtime/application/execution.py::run_agent        执行外壳：AgentRun / ModelCallLog / 预算 / 评估
     5. app/schemas/script.py                          ScriptInput / ScriptOutput 字段契约（title 必填等）
     6. config/prompts/script/*.md                     提示词模板（system + user，string.Template 占位符）
     7. config/schemas/script.schema.json              对外的 JSON Schema 文档副本
@@ -25,7 +25,7 @@ r"""模块 2：剧本解析（script agent）—— 小说章节 -> 结构化剧
 
     1 sandbox           临时数据目录 + 建库建表 + runtime（不污染正式数据）
     2 ingest            内置示例小说 -> 章节（证明输入契约）
-    3 agent config      script.yaml 的关键参数 + 最坏耗时估算 + 提示词模板存在
+    3 agent config      YAML/.env 的有效配置、HTTP 超时、重试/修复策略与提示词
     4 run script        真实调用一次（--offline 时用 mock），记录墙钟时间
     5 artifacts         Script 行 + events/dialogues/chapters 数量与字段完整性
     6 evidence          agent_runs / model_call_logs / 自动评估（可追溯性）
@@ -40,16 +40,20 @@ r"""模块 2：剧本解析（script agent）—— 小说章节 -> 结构化剧
     .\.venv\Scripts\python.exe scripts\checks\module2_script_agent.py --verbose
     .\.venv\Scripts\python.exe scripts\checks\module2_script_agent.py --max-tokens 1200 --timeout 300
 
-最后一行是"预算实验"：只在内存里改 max_output_tokens / 超时，不动 YAML，
-用来确认链路本身是通的（本机模型 ~7-17 tok/s，8192 tokens 根本跑不完 300s）。
+最后一行只在内存里覆盖 max_output_tokens / 超时并更新有效配置指纹，不改 YAML。
+不同供应商的吞吐不同，因此不使用历史本机 token/s 估计当前模型的必然耗时。
+默认命令自动读取当前 YAML 供应商及项目 .env 的凭据；检查本身的 SQLite、
+存储与配置副本始终隔离在临时目录。可用 --report-json PATH 输出脱敏报告。
 
-退出码：0 = 全部通过；1 = 有失败项。
+退出码：0 = 八组全部 PASS；1 = 有 FAIL 或必要项 SKIP。
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
+import json
 import os
 import shutil
 import sys
@@ -57,51 +61,241 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from sqlalchemy import select  # noqa: E402
+import httpx  # noqa: E402
+from sqlalchemy import func, select  # noqa: E402
+from sqlalchemy.engine import make_url  # noqa: E402
 
-from app.agents.base import AgentContext  # noqa: E402
-from app.agents.registry import create_agent  # noqa: E402
-from app.core.settings import Settings, load_settings  # noqa: E402
-from app.db.session import init_engine, init_schema, session_scope  # noqa: E402
 from app.models.ops import AgentRun, ModelCallLog  # noqa: E402
-from app.providers.base import LLMResult  # noqa: E402
+from app.models.project import Project  # noqa: E402
+from app.models.story import Script, StoryEvent  # noqa: E402
+from app.modules.ai_runtime.base import AgentContext  # noqa: E402
+from app.modules.ai_runtime.providers import registry as provider_registry  # noqa: E402
+from app.modules.ai_runtime.providers.base import LLMResult  # noqa: E402
+from app.modules.ai_runtime.registry import create_agent  # noqa: E402
+from app.modules.platform.configuration.config_store import stable_checksum  # noqa: E402
+from app.modules.platform.configuration.settings import Settings, load_settings  # noqa: E402
+from app.modules.platform.execution.runtime import AppRuntime, build_runtime  # noqa: E402
+from app.modules.platform.execution.task_runner import reset_runner  # noqa: E402
+from app.modules.platform.persistence.session import init_engine, init_schema, reset_engine, session_scope  # noqa: E402
+from app.modules.projects import public as projects  # noqa: E402
+from app.modules.story import public as story_module  # noqa: E402
 from app.schemas.script import ScriptInput, ScriptOutput  # noqa: E402
-from app.services import documents, pipeline, projects  # noqa: E402
-from app.services.runtime import AppRuntime, build_runtime  # noqa: E402
 
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 USER_ID = "user_check"
-# 模块 1 实测：本机 qwen 约 7 token/s（64 tokens / 9s）。这里只用来做耗时预估。
-DECODE_TOKENS_PER_SEC = 7.0
+GROUPS = (
+    "1 sandbox",
+    "2 ingest",
+    "3 agent config",
+    "4 run script",
+    "5 artifacts",
+    "6 evidence",
+    "7 schema guard",
+    "8 repair loop",
+)
+
+
+class Redactor:
+    """捕获供应商原始错误时也替换凭据；先脱敏字符串再编码 JSON。"""
+
+    def __init__(self) -> None:
+        self.secrets: set[str] = set()
+
+    def remember_environment(self) -> None:
+        for name, value in os.environ.items():
+            if any(word in name.upper() for word in ("API_KEY", "TOKEN", "SECRET", "PASSWORD")) and value:
+                self.secrets.add(value)
+
+    def text(self, value: Any) -> str:
+        output = str(value)
+        for secret in sorted(self.secrets, key=len, reverse=True):
+            output = output.replace(secret, "[REDACTED]")
+        return output
+
+    def clean(self, value: Any) -> Any:
+        if isinstance(value, str):
+            return self.text(value)
+        if isinstance(value, dict):
+            return {self.text(key): self.clean(item) for key, item in value.items()}
+        if isinstance(value, (tuple, list)):
+            return [self.clean(item) for item in value]
+        return value
+
+
+class SafeStream:
+    def __init__(self, original: Any, redactor: Redactor) -> None:
+        self.original, self.redactor = original, redactor
+
+    def write(self, text: str) -> int:
+        self.original.write(self.redactor.text(text))
+        return len(text)
+
+    def flush(self) -> None:
+        self.original.flush()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.original, name)
+
+
+@contextlib.contextmanager
+def no_network():
+    """offline及schema/stub机制检查不应触达真实接口或备用供应商。"""
+
+    async def deny_async(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("模块2本地机制检查禁止 HTTP 请求")
+
+    def deny_sync(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("模块2本地机制检查禁止 HTTP 请求")
+
+    with patch.object(httpx.AsyncClient, "send", deny_async), patch.object(httpx.Client, "send", deny_sync):
+        yield
 
 
 @dataclass
 class Report:
     rows: list[tuple[str, str, str]] = field(default_factory=list)
+    redactor: Redactor = field(default_factory=Redactor)
+    mode: str = "live"
+    effective_config: dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
+    sandbox_path: str | None = None
+    sandbox_removed: bool = False
+    paths: dict[str, str] = field(default_factory=dict)
 
     def add(self, name: str, status: str, detail: str = "") -> None:
+        detail = self.redactor.text(detail)
+        self.rows[:] = [row for row in self.rows if row[0] != name]
         self.rows.append((name, status, detail))
-        print(f"[{status}] {name:<30s} {detail}")
+        print(f"[{status}] {name:<30s} {detail}", flush=True)
 
     @property
     def failed(self) -> list[tuple[str, str, str]]:
         return [row for row in self.rows if row[1] == FAIL]
 
+    def payload(self) -> dict[str, Any]:
+        known = {row[0]: row for row in self.rows}
+        for name in GROUPS:
+            if name not in known:
+                self.add(name, SKIP, "前置检查未完成")
+        known = {row[0]: row for row in self.rows}
+        rows = [{"name": name, "status": known[name][1], "detail": known[name][2]} for name in GROUPS]
+        return self.redactor.clean(
+            {
+                "mode": self.mode,
+                "success": all(row["status"] == PASS for row in rows),
+                "rows": rows,
+                "effective_config": self.effective_config,
+                "evidence": self.evidence,
+                "sandbox_path": self.sandbox_path,
+                "sandbox_removed": self.sandbox_removed,
+                **self.paths,
+            }
+        )
 
-def build_sandbox(keep: bool) -> tuple[Path, Settings, AppRuntime]:
-    """第 1 步：隔离环境。临时目录 + 独立 SQLite，绝不碰 data/studio.db。"""
-    data_dir = Path(tempfile.mkdtemp(prefix="studio_m2_"))
-    settings = load_settings(data_dir=data_dir)
+
+def require(condition: Any, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
+def effective_fingerprint(store: Any) -> str:
+    config = store.agent("script")
+    providers = []
+    for model in (config.model, config.model.fallback):
+        if model is None:
+            continue
+        provider = store.provider("llm", model.provider)
+        providers.append(
+            {
+                "provider": model.provider,
+                "model": model.model_id,
+                "protocol": provider.protocol_name(),
+                "url": provider.resolved_url(),
+                "api_key_env": provider.api_key_source(),
+                "timeout_seconds": provider.timeout_seconds,
+                "extra": provider.extra,
+            }
+        )
+    return stable_checksum(
+        {
+            "agent": config.model_dump(mode="json", exclude={"config_version", "source_path"}),
+            "effective_providers": providers,
+        }
+    )
+
+
+def use_mock(store: Any) -> None:
+    config = store.agent("script")
+    config.model = config.model.model_copy(
+        update={
+            "provider": "mock",
+            "model_id": "mock-llm",
+            "fallback_provider": None,
+            "fallback_model_id": None,
+            "provider_options": {},
+        }
+    )
+    config.config_version = effective_fingerprint(store)
+
+
+def build_sandbox(
+    keep: bool, offline: bool = False, report: Report | None = None
+) -> tuple[Path, Settings, AppRuntime]:
+    """先固定所有写入路径，再加载会自动读取项目 .env 的 settings。
+
+    仅传 data_dir 不足以覆盖 DATABASE_URL、STORAGE_ROOT 和配置中的相对路径。
+    环境中的模型强制覆盖必须置空而非删除，避免 .env 的 setdefault 再次注入。
+    """
+    sandbox = Path(tempfile.mkdtemp(prefix="studio_m2_")).resolve()
+    if report is not None:
+        report.sandbox_path = str(sandbox)
+    config_dir, data_dir, storage_root = sandbox / "config", sandbox / "data", sandbox / "storage"
+    shutil.copytree(ROOT / "config", config_dir)
+    os.environ.update(
+        {
+            "APP_ENV": "test",
+            # The checker runs against an isolated config/data sandbox but reads
+            # credentials from the project root .env (never copies it into sandbox).
+            "APP_ENV_FILE": str(ROOT / ".env"),
+            "APP_CONFIG_DIR": str(config_dir),
+            "APP_DATA_DIR": str(data_dir),
+            "DATABASE_URL": f"sqlite:///{(sandbox / 'studio.db').as_posix()}",
+            "STORAGE_ROOT": str(storage_root),
+            "STORAGE_BACKEND": "local",
+            "AGENT_MODEL_PROVIDER": "",
+            "AGENT_MODEL_ID": "",
+        }
+    )
+    settings = load_settings(config_dir=config_dir, data_dir=data_dir)
+    database = make_url(settings.database_url)
+    require(database.drivername == "sqlite", "模块2检查只允许独立SQLite")
+    db_path = Path(str(database.database)).resolve()
+    require(sandbox.is_relative_to(Path(tempfile.gettempdir()).resolve()), "沙箱不在系统临时目录")
+    for path in (settings.config_dir, settings.data_dir, settings.storage_root, db_path):
+        require(path.is_absolute() and path.resolve().is_relative_to(sandbox), f"路径逃离沙箱：{path}")
+    require(settings.storage_backend == "local", "模块2检查必须用local storage")
     init_engine(settings)
     init_schema()
     runtime = build_runtime(settings)
-    print(f"  data dir : {data_dir}{'' if keep else ' (removed at the end)'}")
+    if offline:
+        use_mock(runtime.config_store)
+    if report is not None:
+        report.paths = {
+            "config_dir": str(settings.config_dir),
+            "data_dir": str(settings.data_dir),
+            "storage": str(settings.storage_root),
+            "db": str(db_path),
+            "database_url": settings.database_url,
+        }
+    print(f"  sandbox  : {sandbox}{'' if keep else ' (removed at the end)'}")
     print(f"  database : {settings.database_url}")
-    return data_dir, settings, runtime
+    return sandbox, settings, runtime
 
 
 def check_ingest(db, runtime: AppRuntime) -> tuple[object, list[dict]]:
@@ -113,9 +307,9 @@ def check_ingest(db, runtime: AppRuntime) -> tuple[object, list[dict]]:
         description="module 2 check",
         genre="悬疑",
     )
-    document = documents.ingest_sample(db, runtime, project=project, user_id=USER_ID)
+    document = story_module.ingest_sample(db, runtime, project=project, user_id=USER_ID)
     db.flush()
-    chapters = documents.chapter_payloads(db, project.id)
+    chapters = story_module.chapter_payloads(db, project.id)
     print(f"  project  : {project.id} status={project.status}")
     print(f"  document : {document.filename} chapters={len(chapters)}")
     for item in chapters[:3]:
@@ -123,8 +317,8 @@ def check_ingest(db, runtime: AppRuntime) -> tuple[object, list[dict]]:
     return project, chapters
 
 
-def check_agent_config(store, report: Report, offline: bool = False) -> None:
-    """第 3 步：智能体配置体检——参数是否合理，最坏耗时会是多少。"""
+def check_agent_config(store, report: Report, offline: bool = False) -> bool:
+    """第3步：报告真实生效的参数；重试预算与修复预算不是简单相加。"""
     try:
         config = store.agent("script")
         provider = store.provider("llm", config.model.provider)
@@ -132,46 +326,80 @@ def check_agent_config(store, report: Report, offline: bool = False) -> None:
         user_text = store.prompt_text(config.prompt.user_template)
     except Exception as exc:
         report.add("3 agent config", FAIL, f"{type(exc).__name__}: {exc}")
-        return
+        return False
 
     gen = config.generation
     structured = config.structured_output
-    attempts = gen.max_retries + 1
-    worst_case = (attempts + structured.repair_attempts) * gen.timeout_seconds
-    decode_guess = (gen.max_output_tokens or 0) / DECODE_TOKENS_PER_SEC
-
+    attempts = max(1, gen.max_retries + 1)
     problems: list[str] = []
+    require(config.config_version, "配置版本为空")
+    report.redactor.remember_environment()
+    for item in store.providers().values():
+        key = item.resolved_api_key()
+        if key:
+            report.redactor.secrets.add(key)
     if not system_text.strip() or not user_text.strip():
         problems.append("prompt template is empty")
-    if not offline:
-        # 离线模式把 provider 换成了 mock，它本来就没有 api key，不必检查。
-        if not provider.enabled:
-            problems.append(f"provider '{provider.name}' is disabled")
-        if not provider.resolved_api_key():
-            problems.append(f"provider '{provider.name}' has no api key")
+    try:
+        require(config.enabled, "script Agent未启用")
+        provider_registry.validate_generation(store, "llm", config.model, gen)
+        if not offline:
+            require(provider.protocol_name() == "openai_chat", "真实检查需要openai_chat供应商，不能用mock")
+            require(provider.resolved_url(), "真实供应商没有url")
+            require(provider.resolved_api_key(), f"缺少凭据环境变量：{provider.api_key_source()}")
+    except Exception as exc:
+        problems.append(f"{type(exc).__name__}: {exc}")
+
+    candidates = []
+    for model in (config.model, config.model.fallback):
+        if model is None:
+            continue
+        try:
+            item = store.provider("llm", model.provider)
+            candidates.append(
+                {
+                    "provider": model.provider,
+                    "model": model.model_id,
+                    "protocol": item.protocol_name(),
+                    "endpoint": item.resolved_url(),
+                    "api_key_env": item.api_key_source(),
+                    "has_api_key": bool(item.resolved_api_key()),
+                    "http_timeout_seconds": item.timeout_seconds,
+                }
+            )
+        except Exception as exc:
+            problems.append(f"fallback配置不可用：{type(exc).__name__}: {exc}")
+    report.effective_config = {
+        "provider": config.model.provider,
+        "model": config.model.model_id,
+        "endpoint": provider.resolved_url(),
+        "api_key_env": provider.api_key_source(),
+        "has_api_key": bool(provider.resolved_api_key()),
+        "protocol": provider.protocol_name(),
+        "max_tokens": gen.max_output_tokens,
+        "agent_timeout_seconds": gen.timeout_seconds,
+        "provider_timeout_seconds": provider.timeout_seconds,
+        "max_retries": gen.max_retries,
+        "attempts_per_candidate": attempts,
+        "repair_attempts_within_budget": structured.repair_attempts,
+        "candidates": candidates,
+        "config_version": config.config_version,
+    }
 
     detail = (
         f"provider={config.model.provider}/{config.model.model_id} "
         f"max_tokens={gen.max_output_tokens} timeout={gen.timeout_seconds}s "
-        f"retries={gen.max_retries} repairs={structured.repair_attempts} "
-        f"worst_case={worst_case}s"
+        f"http_timeout={provider.timeout_seconds}s attempts_per_candidate<={attempts} "
+        f"repairs_within_budget<={structured.repair_attempts} candidates={len(candidates)}"
     )
     report.add("3 agent config", PASS if not problems else FAIL, detail)
     for item in problems:
         print(f"     error: {item}")
 
     print(f"  prompt: system {len(system_text)} chars, user {len(user_text)} chars")
-    print(f"  provider timeout: {provider.timeout_seconds}s (config/providers/llm.yaml)")
-    if decode_guess > provider.timeout_seconds:
-        print(
-            f"  WARN decode_guess={decode_guess:.0f}s ({gen.max_output_tokens} tokens @ "
-            f"{DECODE_TOKENS_PER_SEC:.0f} tok/s) exceeds provider timeout "
-            f"{provider.timeout_seconds}s -> long answers get cut off"
-        )
-        print("       fix: lower generation.max_output_tokens (e.g. 1200) in config/agents/script.yaml")
-    if worst_case > 600:
-        print(f"  WARN worst_case={worst_case}s: {attempts + structured.repair_attempts} failed "
-              f"attempts in a row look like a hang in the UI")
+    print("  strategy: 修复使用同一候选的已有尝试预算；fallback是后续候选，不额外虚构墙钟上限。")
+    print("  timeout : HTTP使用供应商超时；agent timeout字段不是本执行器的总墙钟截止时间。")
+    return not problems
 
 
 async def _await_with_heartbeat(coro, label: str, every: float = 10.0):
@@ -191,7 +419,7 @@ def check_run(db, runtime: AppRuntime, project, report: Report, offline: bool) -
     try:
         script = asyncio.run(
             _await_with_heartbeat(
-                pipeline.generate_script(db, runtime, project=project, user_id=USER_ID),
+                story_module.generate_script(db, runtime, project=project, user_id=USER_ID),
                 label="script agent",
             )
         )
@@ -203,9 +431,7 @@ def check_run(db, runtime: AppRuntime, project, report: Report, offline: bool) -
             print(f"     failure: {str(item)[:200]}")
         if details.get("attempts"):
             print(f"     attempts={details['attempts']} latency_ms={details.get('latency_ms')}")
-        print("     hint: if module 1 is green, look at the budget first:")
-        print("           config/providers/llm.yaml request_defaults (enable_thinking=false)")
-        print("           config/agents/script.yaml max_output_tokens / timeout_seconds")
+        print("     hint: 检查有效供应商、HTTP超时、输出字段和本次错误；不把其他模型的专有参数套到当前接口。")
         return None
 
     wall = time.perf_counter() - started
@@ -226,7 +452,7 @@ def check_artifacts(script, report: Report) -> None:
         problems.append("title is empty")
     if not events:
         problems.append("events is empty -> character/scene extraction has nothing to work with")
-    for index, event in enumerate(events[:20], start=1):
+    for index, event in enumerate(events, start=1):
         if not (event.get("title") or "").strip():
             problems.append(f"event #{index} has no title")
         if not (event.get("description") or "").strip():
@@ -254,47 +480,72 @@ def check_artifacts(script, report: Report) -> None:
         )
 
 
-def check_evidence(project_id: str, report: Report) -> None:
-    """第 6 步：可追溯性——每次调用都要能在 agent_runs / model_call_logs 里查到。"""
+def check_evidence(
+    project_id: str, report: Report, *, run_id: str, script_id: str, runtime: AppRuntime
+) -> None:
+    """按本次AgentRun.id关联日志、剧本和事件，不能拿项目的另一条成功记录顶替。"""
     with session_scope() as db:
-        run = db.scalars(
-            select(AgentRun)
-            .where(AgentRun.project_id == project_id, AgentRun.agent_id == "script")
-            .order_by(AgentRun.created_at.desc())
-        ).first()
-        call = db.scalars(
-            select(ModelCallLog)
-            .where(ModelCallLog.project_id == project_id)
-            .order_by(ModelCallLog.created_at.desc())
-        ).first()
-
-    problems: list[str] = []
-    if run is None:
-        report.add("6 evidence", FAIL, "no agent_runs row")
-        return
-    if run.status != "succeeded":
-        problems.append(f"agent_runs.status={run.status} error={run.error[:120]}")
-    if not run.tokens_out:
-        problems.append("tokens_out=0 (usage missing from provider response)")
-    if call is None:
-        problems.append("no model_call_logs row")
-    meta = run.meta or {}
-    evaluation = meta.get("evaluation") or {}
-
-    detail = (
-        f"run={run.status} provider={run.model_provider}/{run.model_id} "
-        f"latency={run.latency_ms:.0f}ms in={run.tokens_in} out={run.tokens_out} "
-        f"attempts={run.attempts} cost=${run.cost_usd:.4f}"
+        executed = db.scalars(
+            select(AgentRun).where(
+                AgentRun.id == run_id, AgentRun.project_id == project_id, AgentRun.agent_id == "script"
+            )
+        ).one_or_none()
+        require(executed is not None and executed.status == "succeeded", "本次script调用没有成功记录")
+        call = db.scalars(select(ModelCallLog).where(ModelCallLog.agent_run_id == run_id)).one_or_none()
+        script = db.get(Script, script_id)
+        require(script is not None and script.project_id == project_id, "剧本项目归属不正确")
+        require(
+            call is not None and call.project_id == project_id and call.status == "succeeded",
+            "模型日志未关联本次run",
+        )
+        require(
+            call.provider == executed.model_provider and call.model_id == executed.model_id,
+            "日志供应商/模型不一致",
+        )
+        require(executed.tokens_out > 0, "供应商缺少输出usage信息")
+        require(executed.prompt_version and executed.config_version, "调用缺少prompt/config版本")
+        require(
+            script.model_id == executed.model_id and script.config_version == executed.config_version,
+            "剧本生成出处与调用记录不一致",
+        )
+        require(script.content == executed.output, "调用输出与持久化剧本内容不一致")
+        event_count = db.scalar(
+            select(func.count()).select_from(StoryEvent).where(StoryEvent.script_id == script.id)
+        )
+        require(event_count == len(script.content.get("events") or []), "StoryEvent数量与剧本events不一致")
+        meta = executed.meta or {}
+        require(meta.get("evaluation", {}).get("schema_valid"), "调用缺少结构化评估")
+        if report.mode == "live":
+            actual = runtime.config_store.provider("llm", executed.model_provider)
+            require(actual.protocol_name() != "mock", "真实模式实际使用mock fallback，不能算真实通过")
+            require(meta.get("provider_meta", {}).get("offline") is not True, "真实结果带offline标记")
+        report.evidence = {
+            "agent_run_id": executed.id,
+            "script_id": script.id,
+            "project_id": project_id,
+            "provider": executed.model_provider,
+            "model": executed.model_id,
+            "tokens_in": executed.tokens_in,
+            "tokens_out": executed.tokens_out,
+            "latency_ms": executed.latency_ms,
+            "attempts": executed.attempts,
+            "cost_estimate_usd": executed.cost_usd,
+            "prompt_version": executed.prompt_version,
+            "config_version": executed.config_version,
+            "request_id": meta.get("request_id"),
+            "repairs": meta.get("repairs"),
+            "degraded": meta.get("degraded"),
+            "events": event_count,
+            "evaluation": meta.get("evaluation"),
+            "cost_note": "按供应商已配置费率估算；费率缺失导致0不代表免费。",
+        }
+    report.add(
+        "6 evidence",
+        PASS,
+        f"run_id={run_id} provider={report.evidence['provider']}/"
+        f"{report.evidence['model']} attempts={report.evidence['attempts']} "
+        f"tokens_out={report.evidence['tokens_out']} events={report.evidence['events']}",
     )
-    report.add("6 evidence", PASS if not problems else FAIL, detail)
-    for item in problems:
-        print(f"     error: {item}")
-    print(f"  versions : prompt={run.prompt_version} config={run.config_version}")
-    print(f"  meta     : repairs={meta.get('repairs')} degraded={meta.get('degraded')} "
-          f"request_id={meta.get('request_id') or '-'}")
-    if evaluation:
-        print(f"  evaluation: completeness={evaluation.get('completeness')} "
-              f"warnings={(evaluation.get('warnings') or [])[:3]}")
 
 
 def check_schema_guard(store, report: Report) -> None:
@@ -398,21 +649,16 @@ def check_repair_loop(store, report: Report) -> None:
     if getattr(result.output, "title", "") != "重试成功":
         problems.append(f"unexpected output: {result.output}")
 
-    detail = f"attempts={result.attempts} repairs={(result.meta or {}).get('repairs')} " \
-             f"calls={len(stub.requests)}"
+    detail = (
+        f"attempts={result.attempts} repairs={(result.meta or {}).get('repairs')} calls={len(stub.requests)}"
+    )
     report.add("8 repair loop", PASS if not problems else FAIL, detail)
     for item in problems:
         print(f"     error: {item}")
 
 
 def apply_overrides(store, max_tokens: int | None, timeout: int | None) -> None:
-    """--max-tokens / --timeout：只在内存里改预算，不写 YAML。
-
-    用途：你的模型如果只有 ~7 tok/s，8192 的 max_output_tokens 永远跑不完 300s，
-    先用 --max-tokens 1200 验证整条链路是否通，再决定要不要改配置文件。
-    """
-    if not max_tokens and not timeout:
-        return
+    """仅内存覆盖预算；同步变更实际HTTP超时和审计所用有效配置指纹。"""
     config = store.agent("script")
     update: dict[str, int] = {}
     if max_tokens:
@@ -422,7 +668,14 @@ def apply_overrides(store, max_tokens: int | None, timeout: int | None) -> None:
     config.generation = config.generation.model_copy(update=update)
     if timeout:
         store.provider("llm", config.model.provider).timeout_seconds = int(timeout)
-    print(f"  override : generation{update} provider_timeout={timeout or '-'} (in-memory only)")
+        if config.model.fallback:
+            store.provider("llm", config.model.fallback.provider).timeout_seconds = int(timeout)
+    config.config_version = effective_fingerprint(store)
+    if update:
+        print(
+            f"  override : generation{update} provider_timeout={timeout or '-'} "
+            f"config_version={config.config_version} (in-memory only)"
+        )
 
 
 def run(
@@ -431,73 +684,128 @@ def run(
     verbose: bool = False,
     max_tokens: int | None = None,
     timeout: int | None = None,
+    report_json: Path | str | None = None,
 ) -> int:
-    report = Report()
-    print("=== Module 2: script agent (chapters -> structured script) ===")
-    forced = os.environ.get("AGENT_MODEL_PROVIDER")
-    if forced and not offline:
-        print(f"  WARN AGENT_MODEL_PROVIDER={forced} is set: the run will NOT reach the real model")
-    if offline:
-        # 必须在 load_settings 之前设置：配置在加载时就按它改写了所有智能体。
-        os.environ["AGENT_MODEL_PROVIDER"] = "mock"
+    saved_env = dict(os.environ)
+    report = Report(mode="offline" if offline else "live")
+    report.redactor.remember_environment()
+    sandbox, runtime, local_runtime = None, None, None
+    with (
+        contextlib.redirect_stdout(SafeStream(sys.stdout, report.redactor)),
+        contextlib.redirect_stderr(SafeStream(sys.stderr, report.redactor)),
+    ):
+        try:
+            print(f"=== Module 2: script agent；mode={report.mode}；默认读取YAML/.env ===")
+            sandbox, settings, runtime = build_sandbox(keep, offline=offline, report=report)
+            report.redactor.remember_environment()
+            report.add("1 sandbox", PASS, f"独立SQLite/config/data/local storage；{sandbox}")
+            apply_overrides(runtime.config_store, max_tokens, timeout)
+            ready = check_agent_config(runtime.config_store, report, offline=offline)
+            with no_network(), session_scope() as db:
+                project, chapters = check_ingest(db, runtime)
+                project_id = project.id
+                report.add(
+                    "2 ingest", PASS if chapters else FAIL, f"project={project_id} chapters={len(chapters)}"
+                )
+            script_id, agent_run_id = None, None
+            if ready and chapters:
+                context = no_network() if offline else contextlib.nullcontext()
+                with context, session_scope() as db:
+                    project = db.get(Project, project_id)
+                    script = check_run(db, runtime, project, report, offline=offline)
+                    if script is not None:
+                        script_id = script.id
+                        check_artifacts(script, report)
+                        actual = db.scalars(
+                            select(AgentRun).where(
+                                AgentRun.project_id == project_id, AgentRun.agent_id == "script"
+                            )
+                        ).one()
+                        agent_run_id = actual.id
+            else:
+                report.add("4 run script", SKIP, "配置或章节前置条件未通过，未发送模型请求")
+            if not script_id:
+                report.add("5 artifacts", SKIP, "没有本次成功剧本")
+                report.add("6 evidence", SKIP, "没有本次成功AgentRun，不能宣称真实证据通过")
+            else:
+                try:
+                    check_evidence(
+                        project_id, report, run_id=agent_run_id, script_id=script_id, runtime=runtime
+                    )
+                except Exception as exc:
+                    report.add("6 evidence", FAIL, f"{type(exc).__name__}: {exc}")
 
-    data_dir, settings, runtime = build_sandbox(keep)
-    report.add("1 sandbox", PASS, f"data_dir={data_dir.name}")
-    apply_overrides(runtime.config_store, max_tokens, timeout)
-
-    try:
-        with session_scope() as db:
-            project, chapters = check_ingest(db, runtime)
-            report.add(
-                "2 ingest",
-                PASS if chapters else FAIL,
-                f"project={project.id} chapters={len(chapters)}",
+            # 缺密钥时仍执行安全机制检查；它们采用独立mock配置，不走真实preflight。
+            local_runtime = build_runtime(settings)
+            use_mock(local_runtime.config_store)
+            local_config = local_runtime.config_store.agent("script")
+            local_config.generation = local_config.generation.model_copy(update={"max_retries": 1})
+            local_config.structured_output = local_config.structured_output.model_copy(
+                update={"repair_attempts": 1}
             )
-            if not chapters:
-                return _summary(report)
-
-            check_agent_config(runtime.config_store, report, offline=offline)
-            script = check_run(db, runtime, project, report, offline=offline)
-            if script is not None:
-                check_artifacts(script, report)
-            project_id = project.id
-
-        if script is not None:
-            check_evidence(project_id, report)
-        else:
-            report.add("6 evidence", SKIP, "no successful run")
-
-        check_schema_guard(runtime.config_store, report)
-        check_repair_loop(runtime.config_store, report)
-        if verbose:
-            print(f"  runtime config versions: {runtime.config_store.config_versions()}")
-        return _summary(report)
-    finally:
-        if not keep:
-            _cleanup(data_dir)
+            local_config.config_version = effective_fingerprint(local_runtime.config_store)
+            with no_network():
+                check_schema_guard(local_runtime.config_store, report)
+                check_repair_loop(local_runtime.config_store, report)
+            if verbose:
+                print(
+                    "  effective config:",
+                    json.dumps(report.redactor.clean(report.effective_config), ensure_ascii=False),
+                )
+        except Exception as exc:
+            known = {row[0] for row in report.rows}
+            group = next((name for name in GROUPS if name not in known), "1 sandbox")
+            report.add(group, FAIL, f"{type(exc).__name__}: {exc}")
+        finally:
+            try:
+                for current in (local_runtime, runtime):
+                    if current is not None:
+                        reset_runner(current)
+                reset_engine()
+                if sandbox is None and report.sandbox_path:
+                    sandbox = Path(report.sandbox_path)
+                if sandbox is not None:
+                    if not keep:
+                        _cleanup(sandbox)
+                    report.sandbox_removed = not sandbox.exists()
+            except Exception as exc:
+                report.add("1 sandbox", FAIL, f"释放/清理失败：{type(exc).__name__}: {exc}")
+            finally:
+                os.environ.clear()
+                os.environ.update(saved_env)
+        code = _summary(report)
+        if report_json is not None:
+            destination = Path(report_json).expanduser().absolute()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(
+                json.dumps(report.payload(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+            print(f"JSON报告：{destination}")
+        return code
 
 
 def _cleanup(path: Path) -> None:
     """只删除本脚本在系统临时目录里创建的沙箱，避免误删。"""
-    try:
-        if path.resolve().is_dir() and str(path.resolve()).startswith(
-            str(Path(tempfile.gettempdir()).resolve())
-        ):
-            shutil.rmtree(path, ignore_errors=True)
-    except OSError:
-        pass
+    resolved = path.resolve()
+    require(
+        resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
+        and resolved.name.startswith("studio_m2_"),
+        "拒绝清理不属于模块2本次运行的路径",
+    )
+    if resolved.is_dir():
+        shutil.rmtree(resolved)
 
 
 def _summary(report: Report) -> int:
-    total = len(report.rows)
-    failed = report.failed
+    payload = report.payload()
     print("\n" + "-" * 72)
-    for name, status, _detail in report.rows:
-        print(f"{status:<5s} {name}")
-    if failed:
-        print(f"RESULT: {len(failed)}/{total} FAILED -> fix the failures above before module 3")
+    for row in payload["rows"]:
+        print(f"{row['status']:<5s} {row['name']}")
+    passed = sum(row["status"] == PASS for row in payload["rows"])
+    if not payload["success"]:
+        print(f"RESULT: {passed}/8 passed；必要项SKIP也不算完整通过")
         return 1
-    print(f"RESULT: {total - sum(1 for row in report.rows if row[1] == SKIP)}/{total} passed")
+    print("RESULT: 8/8 passed")
     print("NEXT  : module 3 (characters + scenes, the first review gate)")
     return 0
 
@@ -509,13 +817,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verbose", action="store_true", help="print extra runtime details")
     parser.add_argument("--max-tokens", type=int, default=None, help="override generation.max_output_tokens")
     parser.add_argument("--timeout", type=int, default=None, help="override generation/provider timeout (s)")
+    parser.add_argument(
+        "--report-json", type=Path, default=None, help="write a redacted JSON report to this explicit path"
+    )
     args = parser.parse_args(argv)
+    if args.max_tokens is not None and args.max_tokens <= 0:
+        parser.error("--max-tokens must be greater than zero")
+    if args.timeout is not None and args.timeout <= 0:
+        parser.error("--timeout must be greater than zero")
     return run(
         offline=args.offline,
         keep=args.keep,
         verbose=args.verbose,
         max_tokens=args.max_tokens,
         timeout=args.timeout,
+        report_json=args.report_json,
     )
 
 

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from app.core.constants import ReviewStatus
 from app.db.session import session_scope
-from app.models.ops import Review
+from app.models.ops import Review, WorkflowRun
 from app.models.project import Project
 from app.services import documents, projects, reviews
 from app.services import workflow as workflow_service
@@ -85,3 +87,30 @@ def test_project_summary_tracks_versions(client, runtime, headers, project):
     with session_scope() as db:
         row = db.get(Project, project_id)
         assert projects.get_project(db, row.id, "tester").id == project_id
+
+
+
+def test_workflow_resume_uses_frozen_definition_snapshot(client, runtime, project, monkeypatch):
+    project_id = project["id"]
+    run_id, _, status = run_to_first_gate(runtime, project_id)
+    assert status == "awaiting_review"
+
+    async def scenario():
+        with session_scope() as db:
+            project_row = db.get(Project, project_id)
+            run = db.get(WorkflowRun, run_id)
+            snapshot = (run.state or {}).get("workflow_definition")
+            assert snapshot
+            assert snapshot["id"] == run.definition_id
+            assert snapshot["nodes"]
+
+            def unexpected_current_config_lookup(*args, **kwargs):
+                pytest.fail("resume unexpectedly loaded the mutable current workflow definition")
+
+            monkeypatch.setattr(runtime.config_store, "workflow", unexpected_current_config_lookup)
+            resumed = await workflow_service.WorkflowEngine(runtime).resume(
+                db, run=run, project=project_row, user_id="tester"
+            )
+            return resumed.status
+
+    assert asyncio.run(scenario()) == "awaiting_review"

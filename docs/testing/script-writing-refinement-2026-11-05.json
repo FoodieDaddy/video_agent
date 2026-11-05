@@ -1,0 +1,305 @@
+{
+  "date": "2026-11-05",
+  "verified_at": "2026-11-05T03:10:30+08:00",
+  "project_id": "proj_1c4e7aafd77e",
+  "project_name": "写作体验复核 · 20261105",
+  "checks": {
+    "frontend_tests": 50,
+    "architecture_tests": 16,
+    "console_asset_tests": 3,
+    "quality_gate": "4/4",
+    "formatted_python_files": 244,
+    "type_checked_files": 5,
+    "javascript_syntax": "passed",
+    "frontend_prettier": "passed",
+    "full_backend_suite_rerun": false,
+    "model_calls": 0
+  },
+  "browser_assertions": {
+    "delayedHistoryDoesNotReplaceImport": true,
+    "historyRepaintFocus": true,
+    "importCloseButtonFocus": true,
+    "importEscapeFocus": true,
+    "raceCloseFocus": true,
+    "assistantPanelKeyboard": true,
+    "escapeClosesOnlyDialog": true,
+    "focusColor": "rgb(71, 85, 105)",
+    "headingFocusWidth": "2px",
+    "historyPanelKeyboard": true,
+    "imeEscapePreservesWriting": true,
+    "returnButtonKeyboard": true,
+    "discardReturnsToEditor": true,
+    "routeClearsWriting": true,
+    "searchExitsWriting": true,
+    "focus_mode_keyboard_save_v2": true,
+    "save_success_toasts": 0,
+    "uncaught_page_errors": 0
+  },
+  "layout": {
+    "layouts": [
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 66,
+        "height": 700,
+        "saveBottom": 614.96875,
+        "saveHeight": 44,
+        "saveTop": 570.96875,
+        "saveWidth": 104,
+        "scrollWidth": 320,
+        "width": 320
+      },
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 66,
+        "height": 812,
+        "saveBottom": 670.7734375,
+        "saveHeight": 44,
+        "saveTop": 626.7734375,
+        "saveWidth": 104,
+        "scrollWidth": 375,
+        "width": 375
+      },
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 66,
+        "height": 844,
+        "saveBottom": 686.7734375,
+        "saveHeight": 44,
+        "saveTop": 642.7734375,
+        "saveWidth": 104,
+        "scrollWidth": 390,
+        "width": 390
+      },
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 72,
+        "height": 1024,
+        "saveBottom": 844.7734375,
+        "saveHeight": 44,
+        "saveTop": 800.7734375,
+        "saveWidth": 93,
+        "scrollWidth": 768,
+        "width": 768
+      },
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 72,
+        "height": 390,
+        "saveBottom": 358,
+        "saveHeight": 44,
+        "saveTop": 314,
+        "saveWidth": 93,
+        "scrollWidth": 844,
+        "width": 844
+      },
+      {
+        "buttonsOverlap": false,
+        "discardHeight": 44,
+        "footerHeight": 72,
+        "height": 1080,
+        "saveBottom": 872.7734375,
+        "saveHeight": 44,
+        "saveTop": 828.7734375,
+        "saveWidth": 93,
+        "scrollWidth": 1440,
+        "width": 1440
+      }
+    ],
+    "writing_position": {
+      "before": {
+        "direction": "backward",
+        "end": 58,
+        "page": 180,
+        "scroll": 250,
+        "start": 34
+      },
+      "entered": {
+        "active": "script-text",
+        "direction": "backward",
+        "end": 58,
+        "mode": true,
+        "page": 0,
+        "scroll": 250,
+        "start": 34
+      },
+      "exited": {
+        "active": "script-text",
+        "direction": "backward",
+        "end": 58,
+        "mode": false,
+        "page": 180,
+        "scroll": 250,
+        "start": 34
+      }
+    },
+    "reduced_motion": {
+      "duration": "1e-05s",
+      "focusWidth": "2px",
+      "reduced": true
+    }
+  },
+  "footer_before_saved_state_height": 123.375,
+  "footer_after_saved_state_height": 66,
+  "focus_style": {
+    "outline_width": "2px",
+    "outline_color": "rgb(71, 85, 105)",
+    "headings_and_keyboard_buttons_consistent": true
+  },
+  "data_and_runtime": {
+    "qa_project_id": "proj_1c4e7aafd77e",
+    "original_project_ids": [
+      "proj_5d06f1cbd290",
+      "proj_8d71c0147507",
+      "proj_a18b7154ab8c",
+      "proj_c82fd299a741",
+      "proj_e0340b15f68f"
+    ],
+    "original_project_tables_unchanged": 36,
+    "qa_versions": [
+      {
+        "id": "script_79c7429a2ad8",
+        "version": 1,
+        "length": 1000
+      },
+      {
+        "id": "script_a8257733f6f3",
+        "version": 2,
+        "length": 1011
+      }
+    ],
+    "qa_task_count": 0,
+    "qa_agent_run_count": 0,
+    "qa_model_call_count": 0,
+    "active_tasks": 0,
+    "source_file_integrity": [
+      {
+        "document_id": "doc_b67c9803367c",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_293cb55e0819",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_71deb48b5544",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_4a941acbd183",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_900000d7f6c3",
+        "checksum_matches": true
+      },
+      {
+        "document_id": "doc_cef64f77b49b",
+        "checksum_matches": true
+      }
+    ],
+    "health": {
+      "/health": 200,
+      "/": 200,
+      "/docs": 200,
+      "/api/v1/projects/proj_1c4e7aafd77e/scripts": 200
+    },
+    "listener_pids": [
+      11482
+    ]
+  },
+  "browser_scope": {
+    "final_session": "headed visible Chrome",
+    "mobile": "viewport emulation",
+    "background_frame_waits_counted_as_pass": false
+  },
+  "cleanup": {
+    "owned_test_browser_sessions_closed": true,
+    "active_agent_browser_sessions": 0,
+    "temporary_inputs_and_intermediate_screenshots_removed": true,
+    "evidence_preserved": true
+  },
+  "module4": {
+    "status": "paused_pending_scope",
+    "new_directing_backend_implemented": false,
+    "pending_scopes": [
+      "导演方案，并明确是否包含分镜",
+      "人物和场景视觉资产"
+    ]
+  },
+  "evidence_dir": "/Users/happy/.codex/visualizations/2026/11/05/script-writing-refinement",
+  "evidence_files": [
+    {
+      "name": "data-runtime.json",
+      "sha256": "4320046b47517fd7cfa8a5cc6e33255f82e7348367887c8d02de08297c64d27f"
+    },
+    {
+      "name": "desktop-before.png",
+      "sha256": "d989dffccace3ce10af77335cc52b64bd471435e601c87a2d2dab1d18f1266e6"
+    },
+    {
+      "name": "desktop-selection-proof.png",
+      "sha256": "2bd2c5f0bce1d4b786a86ff650bd454276f2a98286a399bc5165452d089083b7"
+    },
+    {
+      "name": "desktop-workspace.png",
+      "sha256": "4db42822da7f410a3ce005e50c1cf2ae94e2ea8cf55c9bdd0ddfc8cd7ce2ff17"
+    },
+    {
+      "name": "desktop-writing.png",
+      "sha256": "255cc74648789b55376847a69654e48fccb1f3dd9dbb123414b7eb9b336cd33d"
+    },
+    {
+      "name": "dialog-assertions.json",
+      "sha256": "d9052f990a8436ac4ba96026c6e622ff0f6d98dced83a9a4b8c0ce6ad548ef76"
+    },
+    {
+      "name": "final-assertions.json",
+      "sha256": "635ffe9d874b0624afd5bfde78ce3edc70c3a0bd4dfe6f7dc33ca550716a6ac2"
+    },
+    {
+      "name": "frontend-tests.log",
+      "sha256": "b84eb90252ef8becb32c47ef04e71d389cceec207b0760636aef96ca64d4b1db"
+    },
+    {
+      "name": "layout-assertions.json",
+      "sha256": "fe5e9775881e16043e80a59071b2f0dbfbec72368a0c6eb209aab54bec5e73cf"
+    },
+    {
+      "name": "mobile-before.png",
+      "sha256": "b1232a150f8a09f8144b16f80b6fa7cbe56be87a83d89a0af80d17e9b89bdb3b"
+    },
+    {
+      "name": "mobile-history.png",
+      "sha256": "45654f0be414635c994e715a4e71ea52bd2e5333af1a5bfcf79b6cabac28cd0f"
+    },
+    {
+      "name": "mobile-keyboard.png",
+      "sha256": "7b737b4d5dbbb0bf674c2469c3da5e044cceb7659139da60aef68c7c20bdc5a7"
+    },
+    {
+      "name": "mobile-workspace.png",
+      "sha256": "c5887fd4c220a7151703732d99d21b43d25519477b220ec92c7d13f055a8e487"
+    },
+    {
+      "name": "mobile-writing.png",
+      "sha256": "1cc4205caa983b3d499a0ae9954fbb4b2ca1fc3ac071b64faaf088bb77868e8c"
+    },
+    {
+      "name": "original-project-baseline.json",
+      "sha256": "297a9d9d5700b2689346ef9b69f4e2ef66c36eeed7a33050291ae54a60345af3"
+    },
+    {
+      "name": "panel-assertions.json",
+      "sha256": "d659f49f6866a36bea3a834f67ce63974aa893a65baf19a718d8360d2bf28d45"
+    },
+    {
+      "name": "writing-fixture.txt",
+      "sha256": "930c2f4ad8c8bfaaecdeccf4254d6c4f496ddac7d0fc42decd1c1225577f9cf0"
+    }
+  ]
+}

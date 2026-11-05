@@ -122,7 +122,8 @@
           "type": "integer"
         },
         "description": {
-          "default": "",
+          "minLength": 1,
+          "pattern": "\\S",
           "title": "Description",
           "type": "string"
         },
@@ -138,6 +139,8 @@
         },
         "duration_seconds": {
           "default": 5.0,
+          "exclusiveMinimum": 0,
+          "maximum": 60,
           "title": "Duration Seconds",
           "type": "number"
         },
@@ -171,6 +174,9 @@
           "type": "array"
         }
       },
+      "required": [
+        "description"
+      ],
       "title": "ShotDraft",
       "type": "object"
     }
@@ -185,6 +191,8 @@
       "items": {
         "$ref": "#/$defs/ShotDraft"
       },
+      "maxItems": 120,
+      "minItems": 1,
       "title": "Shots",
       "type": "array"
     },
@@ -194,6 +202,9 @@
       "type": "string"
     }
   },
+  "required": [
+    "shots"
+  ],
   "title": "StoryboardOutput",
   "type": "object"
 }

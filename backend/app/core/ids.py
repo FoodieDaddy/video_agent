@@ -1,28 +1,10 @@
-"""Identifier helpers and small time utilities."""
+"""兼容旧导入路径；唯一实现位于 ``app.modules.platform.ids``。
 
-from __future__ import annotations
+模块别名保留类、缓存、全局资源和 monkeypatch 的对象身份，不复制实现。
+"""
 
-import re
-import uuid
-from datetime import UTC, datetime
+import sys
+from importlib import import_module
 
-
-def new_id(prefix: str) -> str:
-    """Readable, sortable-enough identifiers, e.g. ``shot_1f2c3d4e5f60``."""
-    return f"{prefix}_{uuid.uuid4().hex[:12]}"
-
-
-def utcnow() -> datetime:
-    """Naive UTC timestamp (SQLite friendly, comparable everywhere)."""
-    return datetime.now(UTC).replace(tzinfo=None)
-
-
-def slugify(value: str, fallback: str = "item") -> str:
-    cleaned = re.sub(r"[^a-zA-Z0-9\u4e00-\u9fa5_-]+", "-", value or "").strip("-").lower()
-    return cleaned[:60] or fallback
-
-
-def short_hash(value: str) -> str:
-    import hashlib
-
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+_implementation = import_module("app.modules.platform.ids")
+sys.modules[__name__] = _implementation

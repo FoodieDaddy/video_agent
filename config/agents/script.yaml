@@ -1,21 +1,22 @@
-# 剧本解析智能体：小说章节 -> 结构化剧本（章节摘要 / 事件 / 台词）。
+# 剧本智能体：章节分析、现稿润色与续写（正文 / 章节摘要 / 事件 / 台词）。
+# polish 返回完整新正文；continue 仅返回新增正文，由应用层保留原稿后追加。
 #
 # 改完本文件想验证（模块 2 自检，会真实调用一次模型）：
 #   .\.venv\Scripts\python.exe scripts\checks\module2_script_agent.py
-# 本机 qwen 约 7 token/s：max_output_tokens=8192 意味着一次最大输出要 ~19 分钟，
-# 而 timeout_seconds=180 只够 ~1200 个 token。调慢超时前先把 max_output_tokens 调小。
+# 默认使用 fast_gateway，地址、模型和密钥由根目录 .env 自动加载。
+# max_output_tokens 是输出上限；实际生成时长以供应商响应和模块 2 实测为准。
 agent:
   id: script
   name: Script Agent
   enabled: true
-  version: 1.0.0
-  description: 将小说章节解析为结构化剧本：章节摘要、故事事件、人物台词、主旨与基调。
+  version: 1.1.0
+  description: 分析小说章节、润色现有剧本或续写新增片段，同时返回正文与完整故事结构。
 model:
-  provider: qwen
-  model_id: qwen3.8-27b
+  provider: fast_gateway
+  model_id: env:FAST_GATEWAY_MODEL
   capability: text_reasoning
-  fallback_provider: qwen
-  fallback_model_id: qwen3.8-27b
+  fallback_provider: null
+  fallback_model_id: null
   provider_options: {}
 generation:
   temperature: 0.3
@@ -32,7 +33,7 @@ structured_output:
 prompt:
   system: prompts/script/system.md
   user_template: prompts/script/user.md
-  version: 1.0.0
+  version: 1.1.0
 runtime:
   concurrency: 2
   cache_enabled: false

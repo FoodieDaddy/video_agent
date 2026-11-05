@@ -94,9 +94,7 @@ def test_character_assets_then_approve(client, headers, project):
     assert started.status_code == 202, started.text
     assert started.json()["task"]["status"] == "succeeded"
 
-    character = client.get(f"/api/v1/projects/{project_id}/characters", headers=headers).json()[
-        "items"
-    ][0]
+    character = client.get(f"/api/v1/projects/{project_id}/characters", headers=headers).json()["items"][0]
 
     generated = client.post(
         f"/api/v1/characters/{character['id']}/generate-images?wait=true",

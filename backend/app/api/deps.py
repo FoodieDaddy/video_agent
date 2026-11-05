@@ -12,13 +12,13 @@ from typing import Annotated, Any
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
-from app.core.security import CurrentUser, get_admin_user, get_current_user
-from app.db.session import get_db
 from app.models.project import Project
-from app.services import projects as project_service
-from app.services import tasks as task_service
-from app.services.runtime import AppRuntime, get_runtime
+from app.modules.platform.exceptions import NotFoundError
+from app.modules.platform.persistence.session import get_db
+from app.modules.platform.public import AppRuntime, get_runtime
+from app.modules.platform.security import CurrentUser, get_admin_user, get_current_user
+from app.modules.projects import public as project_service
+from app.modules.workflow.public import tasks as task_service
 
 SessionDep = Annotated[Session, Depends(get_db)]
 UserDep = Annotated[CurrentUser, Depends(get_current_user)]

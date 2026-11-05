@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 把镜头、视频与音频资产编排为时间线，供 FFmpeg 渲染器合成成片。
 model:
-  provider: qwen
-  model_id: qwen3.8-27b
+  provider: fast_gateway
+  model_id: env:FAST_GATEWAY_MODEL
   capability: text_reasoning
-  fallback_provider: qwen
-  fallback_model_id: qwen3.8-27b
+  fallback_provider: null
+  fallback_model_id: null
   provider_options: {}
 generation:
   temperature: 0.2

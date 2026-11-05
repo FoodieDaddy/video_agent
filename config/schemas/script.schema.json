@@ -106,10 +106,16 @@
       "type": "object"
     }
   },
-  "description": "Structured script handed to downstream agents.",
+  "description": "供应用层保存并交给下游使用的剧本候选。\n\nNotes:\n    script_text 的含义取决于输入操作：analyze 为改编后的正文，polish 为\n    完整修改后正文，continue 仅为新增段落。续写由应用层将原稿、固定分隔\n    和该新增片段拼成最终完整正文，不能直接用新增片段覆盖原稿。\n    结构字段描述本次操作后的完整故事。script_text 默认空字符串只用于\n    兼容旧分析输出；Agent 可将有效分析结构渲染为可编辑草稿，保留已返回的\n    非空模型正文。润色/续写中的空正文或重复原稿会被拒绝，不走该兼容路径。",
   "properties": {
     "title": {
       "title": "Title",
+      "type": "string"
+    },
+    "script_text": {
+      "default": "",
+      "description": "分析/润色为完整正文；续写仅为待追加的新增正文",
+      "title": "Script Text",
       "type": "string"
     },
     "logline": {

@@ -8,10 +8,13 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from app.api.schemas import CharacterImagesRequest, CharacterUpdate, SceneUpdate
-from app.core.exceptions import NotFoundError
 from app.models.character import Character
 from app.models.scene import Scene
-from app.services import media, pipeline, reviews
+from app.modules.characters import public as character_module
+from app.modules.platform.exceptions import NotFoundError
+from app.modules.production import public as media
+from app.modules.reviews import public as reviews
+from app.modules.scenes import public as scene_module
 
 router = APIRouter(tags=["people"])
 
@@ -19,9 +22,9 @@ router = APIRouter(tags=["people"])
 @router.get("/projects/{project_id}/characters")
 def list_characters(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = pipeline.list_characters(db, project.id)
+    rows = character_module.list_characters(db, project.id)
     return {
-        "items": [pipeline.public_character(db, row) for row in rows],
+        "items": [character_module.public_character(db, row) for row in rows],
         "count": len(rows),
     }
 
@@ -30,10 +33,9 @@ def list_characters(project_id: str, db: SessionDep, user: UserDep) -> dict[str,
 def get_character(character_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     character = _load_character(db, character_id)
     project_scope(db, character.project_id, user)
-    payload = pipeline.public_character(db, character)
+    payload = character_module.public_character(db, character)
     payload["assets"] = [
-        media.character_asset_public(db, row)
-        for row in media.character_assets(db, character.id)
+        media.character_asset_public(db, row) for row in media.character_assets(db, character.id)
     ]
     return payload
 
@@ -48,9 +50,9 @@ def update_character(
     character = _load_character(db, character_id)
     owner_project(db, character.project_id, user)
     data = payload.model_dump(exclude_unset=True)
-    pipeline.update_character(db, character=character, **data)
+    character_module.update_character(db, character=character, **data)
     db.flush()
-    return pipeline.public_character(db, character)
+    return character_module.public_character(db, character)
 
 
 @router.post("/characters/{character_id}/generate-images")
@@ -103,7 +105,7 @@ def approve_character(character_id: str, db: SessionDep, user: UserDep) -> dict[
     project = owner_project(db, character.project_id, user)
     reviews.approve_character(db, project, character)
     db.flush()
-    return pipeline.public_character(db, character)
+    return character_module.public_character(db, character)
 
 
 @router.get("/characters/{character_id}/assets")
@@ -120,15 +122,15 @@ def character_assets(character_id: str, db: SessionDep, user: UserDep) -> dict[s
 @router.get("/projects/{project_id}/scenes")
 def list_scenes(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = pipeline.list_scenes(db, project.id)
-    return {"items": [pipeline.public_scene(db, row) for row in rows], "count": len(rows)}
+    rows = scene_module.list_scenes(db, project.id)
+    return {"items": [scene_module.public_scene(db, row) for row in rows], "count": len(rows)}
 
 
 @router.get("/scenes/{scene_id}")
 def get_scene(scene_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     scene = _load_scene(db, scene_id)
     project_scope(db, scene.project_id, user)
-    return pipeline.public_scene(db, scene)
+    return scene_module.public_scene(db, scene)
 
 
 @router.patch("/scenes/{scene_id}")
@@ -141,9 +143,9 @@ def update_scene(
     scene = _load_scene(db, scene_id)
     owner_project(db, scene.project_id, user)
     data = payload.model_dump(exclude_unset=True)
-    pipeline.update_scene(db, scene=scene, **data)
+    scene_module.update_scene(db, scene=scene, **data)
     db.flush()
-    return pipeline.public_scene(db, scene)
+    return scene_module.public_scene(db, scene)
 
 
 @router.post("/scenes/{scene_id}/approve")
@@ -152,7 +154,7 @@ def approve_scene(scene_id: str, db: SessionDep, user: UserDep) -> dict[str, Any
     project = owner_project(db, scene.project_id, user)
     reviews.approve_scene(db, project, scene)
     db.flush()
-    return pipeline.public_scene(db, scene)
+    return scene_module.public_scene(db, scene)
 
 
 def _load_character(db, character_id: str) -> Character:

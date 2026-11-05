@@ -1,0 +1,363 @@
+{
+  "date": "2026-11-05",
+  "backend_tests": 229,
+  "frontend_tests": 44,
+  "project_id": "proj_5d06f1cbd290",
+  "docx_project_id": "proj_e0340b15f68f",
+  "audit": {
+    "versions": 11,
+    "tasks": 2,
+    "agent_runs": 2,
+    "model_logs": 2,
+    "providers": [
+      "fast_gateway"
+    ],
+    "models": [
+      "gpt-6.1-terra"
+    ],
+    "attempts": 2,
+    "prefix_preserved": true
+  },
+  "browser_assertions": {
+    "save_success_toast_count": 0,
+    "save_status_aria_live": "polite",
+    "mobile_width": 390,
+    "mobile_scroll_width": 390,
+    "save_bottom": 822.4,
+    "mobile_title_accessible_name": "交互复核 · 保存状态 20261105",
+    "pending_input_preserved": true,
+    "network_failure_preserved_draft": true,
+    "retry_saved": true,
+    "conflict_preserved_draft": true,
+    "explicit_rebase_saved": true,
+    "live_import_retry_saved": true,
+    "v11_persisted_after_reload": true,
+    "dependency_revision_consistent": true
+  },
+  "docx": {
+    "before_table_missing": true,
+    "after_table_present": true,
+    "v1_preserved": true,
+    "versions": 2
+  },
+  "module4": {
+    "status": "paused_pending_scope",
+    "backend_directing_modified": false,
+    "checks_created": false,
+    "frontend_partial_preserved": [
+      "directing_versions",
+      "getDirectingPlan",
+      "demo-directing-plan-1"
+    ],
+    "real_history_endpoint_implemented": false
+  },
+  "evidence_dir": "/Users/happy/.codex/visualizations/2026/11/05/script-ux-iteration",
+  "verified_at": "2026-11-05T02:47:23+08:00",
+  "runtime": {
+    "application_processes": [
+      {
+        "pid": 11482,
+        "cwd": "/Users/happy/PycharmProjects/video_agent"
+      }
+    ],
+    "endpoints": {
+      "/health": {
+        "status": 200,
+        "cache_control": null,
+        "body": {
+          "status": "ok",
+          "app": "AI Film Studio",
+          "env": "development",
+          "database": "ok",
+          "storage": "local"
+        }
+      },
+      "/": {
+        "status": 200,
+        "cache_control": "no-store",
+        "versioned_entry": true,
+        "import_map": true
+      },
+      "/docs": {
+        "status": 200,
+        "cache_control": null
+      },
+      "/api/v1/projects/proj_5d06f1cbd290/scripts": {
+        "status": 200,
+        "cache_control": null,
+        "count": 11,
+        "versions": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "/api/v1/projects/proj_e0340b15f68f/scripts": {
+        "status": 200,
+        "cache_control": null,
+        "count": 2,
+        "versions": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "database_audit": {
+    "active_tasks": 0,
+    "proj_5d06f1cbd290": {
+      "versions": [
+        {
+          "id": "script_dc10741ea30e",
+          "version": 1,
+          "source": "manual",
+          "text_length": 24
+        },
+        {
+          "id": "script_f8ca444870ee",
+          "version": 2,
+          "source": "manual",
+          "text_length": 19
+        },
+        {
+          "id": "script_7e4fe447c44c",
+          "version": 3,
+          "source": "manual",
+          "text_length": 40
+        },
+        {
+          "id": "script_8174dd597b0e",
+          "version": 4,
+          "source": "manual",
+          "text_length": 23
+        },
+        {
+          "id": "script_cf978bf0dd6c",
+          "version": 5,
+          "source": "manual",
+          "text_length": 21
+        },
+        {
+          "id": "script_f63cdb4ab10b",
+          "version": 6,
+          "source": "manual",
+          "text_length": 20
+        },
+        {
+          "id": "script_96c1644a17c8",
+          "version": 7,
+          "source": "manual",
+          "text_length": 22
+        },
+        {
+          "id": "script_94fb365b043a",
+          "version": 8,
+          "source": "manual",
+          "text_length": 59
+        },
+        {
+          "id": "script_912611aa99c2",
+          "version": 9,
+          "source": "import",
+          "text_length": 59
+        },
+        {
+          "id": "script_08ef3cd9b386",
+          "version": 10,
+          "source": "polish",
+          "text_length": 62
+        },
+        {
+          "id": "script_fce9dd0b687e",
+          "version": 11,
+          "source": "continue",
+          "text_length": 116
+        }
+      ],
+      "tasks": [
+        {
+          "id": "task_38ba9adcf7c5",
+          "type": "script_assist",
+          "status": "succeeded"
+        },
+        {
+          "id": "task_c996392b1e25",
+          "type": "script_assist",
+          "status": "succeeded"
+        }
+      ],
+      "agent_runs": [
+        {
+          "id": "arun_171f9ffb1351",
+          "agent_id": "script",
+          "status": "succeeded",
+          "provider": "fast_gateway",
+          "model": "gpt-6.1-terra",
+          "attempts": 1
+        },
+        {
+          "id": "arun_b92e05cc3555",
+          "agent_id": "script",
+          "status": "succeeded",
+          "provider": "fast_gateway",
+          "model": "gpt-6.1-terra",
+          "attempts": 1
+        }
+      ],
+      "model_logs": [
+        {
+          "id": "mcall_30dd062bbde6",
+          "provider": "fast_gateway",
+          "model": "gpt-6.1-terra",
+          "status": "succeeded"
+        },
+        {
+          "id": "mcall_6a7a0e1690a4",
+          "provider": "fast_gateway",
+          "model": "gpt-6.1-terra",
+          "status": "succeeded"
+        }
+      ],
+      "workflow_count": 0,
+      "continuation_preserves_v10": true
+    },
+    "proj_e0340b15f68f": {
+      "versions": [
+        {
+          "id": "script_576005c32a3c",
+          "version": 1,
+          "source": "import",
+          "text_length": 19
+        },
+        {
+          "id": "script_25418837e5e1",
+          "version": 2,
+          "source": "import",
+          "text_length": 49
+        }
+      ],
+      "tasks": [],
+      "agent_runs": [],
+      "model_logs": [],
+      "workflow_count": 0,
+      "v1_table_missing": true,
+      "v2_table_present": true
+    }
+  },
+  "data_protection": {
+    "business_write_project_ids": [
+      "proj_5d06f1cbd290",
+      "proj_e0340b15f68f"
+    ],
+    "isolation": "dedicated projects in the existing application database",
+    "original_source_files": [
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_b67c9803367c",
+        "checksum_matches": true
+      },
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_293cb55e0819",
+        "checksum_matches": true
+      },
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_71deb48b5544",
+        "checksum_matches": true
+      },
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_4a941acbd183",
+        "checksum_matches": true
+      },
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_900000d7f6c3",
+        "checksum_matches": true
+      },
+      {
+        "project_id": "proj_a18b7154ab8c",
+        "document_id": "doc_cef64f77b49b",
+        "checksum_matches": true
+      }
+    ],
+    "scope_note": "Checksums verify original uploaded file integrity; no full database before-after snapshot comparison is claimed."
+  },
+  "cleanup": {
+    "test_browser_sessions_closed": true,
+    "active_agent_browser_sessions": 0,
+    "temporary_import_inputs_removed": true,
+    "necessary_evidence_preserved": true
+  },
+  "evidence_files": [
+    {
+      "name": "backend-quality.log",
+      "sha256": "348937482df6ff72928099d8f2dd443b00f3d8387e30f33dd93ecdd5691a4867"
+    },
+    {
+      "name": "database-audit.json",
+      "sha256": "1bf046af13d2ab0d4357163f95b0ac63f25579fee98bbe06d7856818d874d8fa"
+    },
+    {
+      "name": "docx-table-fixture.docx",
+      "sha256": "2a3e666e66bff8cf1a859fedd4d4b51d70ab478d2eed66d8115506cba58f8e57"
+    },
+    {
+      "name": "empty-script-fixture.json",
+      "sha256": "b18c6fee4294a928ed177530477ebd60dd52581aebbc2bc464ca3ac859b514b3"
+    },
+    {
+      "name": "frontend-tests.log",
+      "sha256": "983d3a0f88e620b83c7b93e63207ff6eea6d2db0999abf5bf21647d57293f367"
+    },
+    {
+      "name": "runtime.json",
+      "sha256": "745dd90086fc847fda5822e095ace594f7ae67978fc931c3f5ccf18972358e9f"
+    },
+    {
+      "name": "script-fixture.md",
+      "sha256": "1580bbbbb97480d536ba62b41a26d63e2db7321e1f8fb747d2e536cf828c955e"
+    },
+    {
+      "name": "script-ux-before.png",
+      "sha256": "566af659087cd765ae51eed46e41ab758c65184bda5a43eaf4bb2ad6f917b09d"
+    },
+    {
+      "name": "script-ux-docx-after.png",
+      "sha256": "e351531763f26c38632978d1b1442aa05e1f0731f2d1cca3944a384f76a92a4e"
+    },
+    {
+      "name": "script-ux-import-error-fixed.png",
+      "sha256": "d8cad442da086fcbaf6e24e071e15dc4e14e27c8ed32d5e0a657960d4f6a149f"
+    },
+    {
+      "name": "script-ux-mobile-conflict-single.png",
+      "sha256": "54e89facccb0fb80b04778edd84abbe409de4ee460fa13ba97a75a8cef16679d"
+    },
+    {
+      "name": "script-ux-mobile-inline-save.png",
+      "sha256": "60607c275c3f3f4b15b09f7dfe077b638bd808f1738f470fc94cdc9b19aea33f"
+    },
+    {
+      "name": "script-ux-mobile-live-v11.png",
+      "sha256": "c89039929c8a8b4d17b2bda7c3ba626989e03d5410d7662d157cbc5e2381b150"
+    },
+    {
+      "name": "script-ux-mobile-save-failure.png",
+      "sha256": "d413366eb0b8e5f90c32da4a2b8bcc51854370286f8d3ae67aa021dd39df5a2a"
+    },
+    {
+      "name": "source-integrity.json",
+      "sha256": "139e9e6455da517df118bd5c14986f52a269a81009e87dd785d00729811688d4"
+    }
+  ]
+}

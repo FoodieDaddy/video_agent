@@ -5,11 +5,11 @@ agent:
   version: 1.0.0
   description: 把结构化镜头转换为视频模型提示词包（正向、负向、风格、机位、人物 token）。
 model:
-  provider: qwen
-  model_id: qwen3.8-27b
+  provider: fast_gateway
+  model_id: env:FAST_GATEWAY_MODEL
   capability: text_reasoning
-  fallback_provider: qwen
-  fallback_model_id: qwen3.8-27b
+  fallback_provider: null
+  fallback_model_id: null
   provider_options: {}
 generation:
   temperature: 0.4

@@ -54,6 +54,7 @@ SCHEMA_FILES = {
     "character_extraction": "character.schema.json",
     "character_profile": "character_profile.schema.json",
     "scene_extraction": "scene.schema.json",
+    "directing_plan": "directing_plan.schema.json",
     "storyboard": "storyboard.schema.json",
     "evaluation": "evaluation.schema.json",
 }

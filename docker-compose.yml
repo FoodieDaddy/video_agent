@@ -34,6 +34,9 @@ services:
       FFMPEG_BIN: "/usr/bin/ffmpeg"
       FFPROBE_BIN: "/usr/bin/ffprobe"
       # model credentials: export them in your shell, never bake them into the image
+      FAST_GATEWAY_API_KEY: "${FAST_GATEWAY_API_KEY:-}"
+      FAST_GATEWAY_BASE_URL: "${FAST_GATEWAY_BASE_URL:-}"
+      FAST_GATEWAY_MODEL: "${FAST_GATEWAY_MODEL:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
       OPENAI_COMPAT_API_KEY: "${OPENAI_COMPAT_API_KEY:-}"

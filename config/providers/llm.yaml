@@ -15,6 +15,20 @@
 # 改完想验证本文件是否生效（模块 1 自检，含一次真实调用）：
 #   .\.venv\Scripts\python.exe scripts\checks\module1_config_llm.py
 providers:
+  # 默认文字模型供应商。地址、模型名和凭据均从项目根目录 .env 自动读取。
+  fast_gateway:
+    enabled: true
+    protocol: openai_chat
+    url: env:FAST_GATEWAY_BASE_URL
+    api_key: env:FAST_GATEWAY_API_KEY
+    models:
+      - env:FAST_GATEWAY_MODEL
+    timeout_seconds: 180
+    max_concurrency: 1
+    extra:
+      max_tokens_field: max_tokens
+      # 未配置费率时成本为未计价估算，不代表供应商免费。
+
   mock:
     enabled: true
     protocol: mock
@@ -59,7 +73,7 @@ providers:
   # 本机 vLLM 上的 Qwen（http://127.0.0.1:8000/v1）。
   # 密钥写在 .env 的 QWEN_API_KEY 里（本机服务填任意字符串即可）。
   qwen:
-    enabled: true
+    enabled: false
     protocol: openai_chat
     url: http://127.0.0.1:8000/v1
     api_key: env:QWEN_API_KEY

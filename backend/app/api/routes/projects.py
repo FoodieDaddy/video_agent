@@ -15,8 +15,8 @@ from app.api.deps import (
 )
 from app.api.schemas import ProjectCreate, ProjectUpdate
 from app.api.serializers import dashboard, project_public
-from app.services import assets as asset_service
-from app.services import projects as project_service
+from app.modules.assets import public as asset_service
+from app.modules.projects import public as project_service
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -96,10 +96,10 @@ def list_assets(
 
 @router.get("/{project_id}/summary")
 def project_summary(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
-    from app.services import pipeline
+    from app.modules.production import public as production_module
 
     project = project_scope(db, project_id, user)
-    return pipeline.project_summary(db, project)
+    return production_module.project_summary(db, project)
 
 
 @router.get("/{project_id}/meta")

@@ -19,7 +19,10 @@
    （也可在「审核」页签处理），直到工作流 `completed`。
 6. 在「剪辑」页签看成片，「质量评估」页签看评分，`GET /projects/{id}/export` 拿导出文件。
 
-离线跑通不需要任何 API Key：默认全部走 `mock` provider，产出真实的 PNG / MP4 / WAV / SRT。
+离线演示可显式设置 `AGENT_MODEL_PROVIDER=mock`，无需 API Key，产出 PNG / MP4 / WAV / SRT。
+正常启动使用 `fast_gateway`，程序自动读取项目根目录 `.env` 中的
+`FAST_GATEWAY_BASE_URL`、`FAST_GATEWAY_MODEL`、`FAST_GATEWAY_API_KEY`；地址、模型
+和密钥配置一次后无需重复输入或手动 export。修改 `.env` 后需重新启动。
 
 ---
 
@@ -166,6 +169,9 @@ docker compose down -v             # 停止并清空数据库与生成媒体
 | `APP_ALLOW_DEV_AUTH` | `1` | 关闭后必须提供 `X-User-Id` 请求头 |
 | `APP_DEMO_USER_ID` | `user_demo` | 演示身份 ID |
 | `FFMPEG_BIN` / `FFPROBE_BIN` | `ffmpeg` / `ffprobe` | 二进制路径 |
+| `FAST_GATEWAY_API_KEY` | 从根目录 `.env` 自动读取 | 默认文字模型供应商凭据 |
+| `FAST_GATEWAY_BASE_URL` | 从根目录 `.env` 自动读取 | 默认文字模型供应商接口地址 |
+| `FAST_GATEWAY_MODEL` | 从根目录 `.env` 自动读取 | 12 个文字 Agent 共用的模型名 |
 | `OPENAI_API_KEY` 等 | 空 | 只在对应 provider 启用后才被读取 |
 
 模型密钥只通过环境变量提供，`config/providers/*.yaml` 里只写**变量名**，不写密钥。
@@ -551,7 +557,8 @@ Invoke-RestMethod -Method Post -Uri "$base/projects/$pid/tasks/$tid/cancel"
 6. 成本：provider YAML 的 `extra.input_cost_per_1k` / `output_cost_per_1k` 参与计费，
    Dashboard「成本」显示累计 `spent_usd`。
 
-可选 provider（`openai`/`openai_compatible`/`qwen` 默认只启用本机 `qwen`）：图片 `openai`/`local_comfy`、
+默认文字 provider 是 `fast_gateway`；`openai`/`openai_compatible`/`qwen` 保留但默认禁用。
+其他能力可选 provider：图片 `openai`/`local_comfy`、
 语音 `openai`/`local_tts`、视觉 `openai`/`local_vision`、视频 `openai_videos`（本机 `minimax`）/
 `local_worker`/`hosted`。每个 provider 只看三个字段：`url`（接口地址）、`api_key`
 （`env:环境变量名` 或直接写密钥）、`models`（可用模型名）。
@@ -562,28 +569,30 @@ Invoke-RestMethod -Method Post -Uri "$base/projects/$pid/tasks/$tid/cancel"
 - 模型 ID 不在该 provider 的 `models` 列表、或传了 `extra.supported_params` 之外的生成参数 → 配置类错误；
 - 不想全链路接真模型时，可用 `AGENT_MODEL_PROVIDER` / `AGENT_MODEL_ID` 强制统一到某个 provider（仅开发环境）。
 
-### 7.4 本机双模型：vLLM 文字 + MiniMax 视频
+### 7.4 默认文字模型与独立视频服务
 
 文字与视频来自不同厂商完全没问题——它们分属 `config/providers/llm.yaml` 与
-`config/providers/video.yaml` 两个文件，互不影响。仓库里已按本机地址配好：
+`config/providers/video.yaml` 两个文件，互不影响。当前默认配置如下：
 
 | 用途 | provider | 文件 | 地址 | 模型 |
 | --- | --- | --- | --- | --- |
-| 12 个文字类智能体 | `qwen` | `config/providers/llm.yaml` | `http://127.0.0.1:8000/v1` | `qwen3.8-27b` |
+| 12 个文字类智能体 | `fast_gateway` | `config/providers/llm.yaml` | `.env: FAST_GATEWAY_BASE_URL` | `.env: FAST_GATEWAY_MODEL` |
 | 视频智能体 | `minimax` | `config/providers/video.yaml` | `http://127.0.0.1:8090/v1` | `minimax-h3` |
 
 密钥放在 `.env`（已被 `.gitignore` 忽略）：
 
 ```ini
-QWEN_API_KEY=qwen3.8
-MINIMAX_API_KEY=minimax
+FAST_GATEWAY_API_KEY=你的文字供应商密钥
+FAST_GATEWAY_BASE_URL=https://fast.sbbbbbbbbb.xyz/v1
+FAST_GATEWAY_MODEL=gpt-6.1-terra
+# 视频服务需要时单独配置
+# MINIMAX_API_KEY=你的视频供应商密钥
 ```
 
 要点：
 
-1. 该 vLLM 网关要求每次请求都带 `reasoning_effort`（缺了报
-   `Unexpected reasoning effort None`），所以 `qwen` 的 `extra.request_defaults` 里固定写了
-   `reasoning_effort: medium`；改成 `low` 更快、`xhigh` 更细；
+1. `fast_gateway` 使用通用 Chat Completions 参数。原本机 `qwen` 配置保留但禁用，
+   其中 vLLM 专用的 `reasoning_effort`、`chat_template_kwargs` 不用于当前默认供应商；
 2. 视频服务是「提交 → 轮询 → 取文件」：`POST /v1/videos` → `GET /v1/videos/{id}` →
    `GET /v1/videos/{id}/content`，对应 `protocol: openai_videos` 与 `extra.content_suffix: /content`；
 3. 该服务是纯文生视频（传参考图会 400），适配器默认只发 `prompt` / `duration_seconds` /
