@@ -286,6 +286,24 @@ def test_legacy_model_aggregators_reexport_the_canonical_classes():
     assert all(legacy is canonical for legacy, canonical in pairs)
 
 
+def test_legacy_production_media_module_reexports_split_flows():
+    from app.modules.production import public as production
+    from app.modules.production.application import media as legacy_media
+    from app.modules.production.application.audio import generate_audio
+    from app.modules.production.application.character_assets import generate_character_assets
+    from app.modules.production.application.editing import render_film
+    from app.modules.production.application.shot_video import generate_shot_videos
+
+    assert legacy_media.generate_character_assets is generate_character_assets
+    assert legacy_media.generate_shot_videos is generate_shot_videos
+    assert legacy_media.generate_audio is generate_audio
+    assert legacy_media.render_film is render_film
+    assert production.generate_character_assets is generate_character_assets
+    assert production.generate_shot_videos is generate_shot_videos
+    assert production.generate_audio is generate_audio
+    assert production.render_film is render_film
+
+
 def test_cross_module_imports_use_public_or_declared_technical_interfaces():
     violations = []
     owners = set()

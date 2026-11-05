@@ -2,7 +2,7 @@
 
 - 日期：2026 年 11 月 5 日
 - 当前分支：`codex/normalize-project-structure`
-- 状态：逻辑模块化、工作流定义快照和 39 个 ORM 映射的模块归属已落地；仓储/DTO 边界、production/media 拆分与 workspace 仍在后续阶段
+- 状态：逻辑模块化、工作流定义快照、39 个 ORM 映射归属和 production/media 首轮拆分已落地；仓储/DTO 边界与 workspace 仍在后续阶段
 
 本批按[改动说明](modular-monolith-refactoring-proposal.md)推进业务分包，保留原有运行方式和业务行为。当前仍是 `backend/app` 下的模块化单体，目标中的 `apps`、`packages`、独立成员 `pyproject.toml` 和 workspace 尚未建立。
 
@@ -82,7 +82,7 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 
 1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已先行进入 domain，应用函数仍保留原 Session/ORM 契约。
 2. 业务 ORM 映射已归入所属模块并保留共享 Base；继续迁移仓储、DTO 与跨模块查询，再逐步收拢 `app.models` 聚合注册。
-3. 进一步细分 production 内媒体实现，按规划、生成、后期和质量提高内聚度。
+3. production/media 已按人物资产、镜头视频、配音字幕、剪辑渲染和质量首轮拆分；后续保持职责边界并避免重新聚合成大文件。
 4. 模块边界稳定后再迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
 5. 旧入口的删除另作兼容性变更，不与本次迁移混在一起。
 
@@ -118,3 +118,11 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 - 对比重构前 `HEAD` 与当前 metadata：39 张表的列名、类型、可空性、主键、外键、约束和索引完全相同；本批只改变类定义归属，没有数据库结构或数据迁移。
 
 本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 309 项通过，含模块架构约束；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock；没有启动网页服务或调用真实模型。
+
+## 第六批：production 媒体用例拆分
+
+- 将原 1,178 行 `production/application/media.py` 中的实现按人物资产、镜头视频、配音字幕、剪辑/渲染/导出迁入 `character_assets.py`、`shot_video.py`、`audio.py`、`editing.py`；共享尺寸与资产读取放入 `media_support.py`。
+- `production.public` 直接导出新实现；旧 `application.media` 保留函数对象重新导出，供现存调用方迁移期间使用。质量用例改为直接依赖同模块的 `editing` 用例。
+- 保持函数签名、返回值、事务提交责任、模型调用和 FFmpeg 行为不变；没有改变状态机或数据库结构。
+
+本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 310 项通过，含旧 facade 与新实现函数对象一致性检查；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock，没有启动网页服务或调用真实模型。

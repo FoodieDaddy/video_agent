@@ -20,8 +20,8 @@ from app.modules.characters import public as character_module
 from app.modules.platform.constants import AssetKind
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
-from app.modules.production.application import media
 from app.modules.production.application import queries as production_queries
+from app.modules.production.application.editing import latest_editing, latest_film_asset
 from app.modules.production.infrastructure.persistence.models import (
     AudioTrack,
     EvaluationResult,
@@ -69,7 +69,7 @@ def collect_metrics(db: Session, project: Project, *, stage: str = "final") -> d
         .where(Asset.project_id == project.id, Asset.kind == AssetKind.SUBTITLE.value)
         .order_by(Asset.created_at.desc())
     )
-    film = media.latest_film_asset(db, project.id)
+    film = latest_film_asset(db, project.id)
     characters = character_module.list_characters(db, project.id)
     profiles = int(
         db.scalar(select(func.count(CharacterProfile.id)).where(CharacterProfile.project_id == project.id))
@@ -79,7 +79,7 @@ def collect_metrics(db: Session, project: Project, *, stage: str = "final") -> d
         db.scalar(select(func.count(CharacterAsset.id)).where(CharacterAsset.project_id == project.id)) or 0
     )
     approved_shots = sum(1 for shot in shots if shot.approved)
-    editing = media.latest_editing(db, project.id)
+    editing = latest_editing(db, project.id)
 
     dialogue_lines = sum(len(shot.dialogue or []) for shot in shots)
     coverage = round(shots_with_video / len(shots), 3) if shots else 0.0
