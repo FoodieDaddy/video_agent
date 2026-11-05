@@ -14,13 +14,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.characters import public as character_module
 from app.modules.platform.configuration.config_models import WorkflowNodeConfig
 from app.modules.platform.exceptions import AgentSchemaError, ConflictError, WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
+from app.modules.platform.persistence.models import Task
 from app.modules.production import public as production_module
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.scenes import public as scene_module
 from app.modules.story import public as story_module
 from app.modules.workflow.infrastructure.persistence.models import WorkflowRun
@@ -53,23 +53,23 @@ Handler = Callable[[HandlerContext], Awaitable[dict[str, Any]]]
 async def handle_script(ctx: HandlerContext) -> dict[str, Any]:
     # 手写/导入/修订稿已经是剧本输入。启动完整流程时复用该版本，不能再强制
     # 要求小说章节或悄悄重写正文；独立“解析小说”任务仍执行原有生成用例。
-    current = story_module.latest_script(ctx.db, ctx.project.id)
+    current = story_module.latest_script_snapshot(ctx.db, ctx.project.id)
     meta = (current.content or {}).get("workspace_meta", {}) if current is not None else {}
     if (
         ctx.workflow_run is not None
         and current is not None
         and meta.get("source") in {"manual", "import", "polish", "continue", "restore"}
-        and story_module.script_text_of(current).strip()
+        and current.script_text.strip()
     ):
         return {
             "script_id": current.id,
-            "script_fingerprint": story_module.script_fingerprint(current),
+            "script_fingerprint": current.fingerprint,
             "version": current.version,
             "title": current.title,
             "events": len((current.content or {}).get("events") or []),
             "reused_saved_script": True,
         }
-    script = await story_module.generate_script(
+    script = await story_module.generate_script_snapshot(
         ctx.db,
         ctx.runtime,
         project=ctx.project,
@@ -79,7 +79,7 @@ async def handle_script(ctx: HandlerContext) -> dict[str, Any]:
     )
     return {
         "script_id": script.id,
-        "script_fingerprint": story_module.script_fingerprint(script),
+        "script_fingerprint": script.fingerprint,
         "version": script.version,
         "title": script.title,
         "events": len((script.content or {}).get("events") or []),

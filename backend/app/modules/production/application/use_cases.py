@@ -14,11 +14,12 @@ from pydantic import ValidationError
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from app.models.character import CharacterCostume, CharacterState
-from app.models.ops import Task
-from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
-from app.modules.characters.public import character_payload, list_characters
+from app.modules.assets import public as asset_service
+from app.modules.characters.public import (
+    character_detail_reference_matches,
+    list_character_snapshots,
+)
 from app.modules.platform.constants import ProjectStatus, ShotStatus
 from app.modules.platform.exceptions import (
     AgentSchemaError,
@@ -29,6 +30,7 @@ from app.modules.platform.exceptions import (
 )
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
 from app.modules.platform.persistence.versions import next_version as _next_version
 from app.modules.production.infrastructure.persistence.models import (
     DirectingPlan,
@@ -36,12 +38,18 @@ from app.modules.production.infrastructure.persistence.models import (
     ShotCharacter,
     Storyboard,
 )
+from app.modules.production.schemas.director import DirectingPlanInput
+from app.modules.production.schemas.prompt import PromptInput
+from app.modules.production.schemas.storyboard import StoryboardInput
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
-from app.modules.scenes.public import list_scenes, scene_payload
-from app.modules.story.public import assert_script_baseline, latest_script, script_fingerprint
-from app.schemas.director import DirectingPlanInput
-from app.schemas.prompt import PromptInput
-from app.schemas.storyboard import StoryboardInput
+from app.modules.scenes.public import list_scene_snapshots
+from app.modules.story.public import (
+    assert_script_baseline_reference,
+    assert_script_baseline_snapshot,
+    get_script_snapshot,
+    latest_script_snapshot,
+)
 
 from .fingerprints import directing_plan_fingerprint, shot_edit_fingerprint
 from .queries import directing_source_status, latest_board, latest_plan, shot_payload
@@ -86,7 +94,7 @@ def update_shot(
         raise ConflictError("分镜版本已变化，请重新打开镜头")
     if base_shot_fingerprint is not None and base_shot_fingerprint != shot_edit_fingerprint(shot):
         raise ConflictError("镜头已被修改，请刷新后重新编辑", details={"shot_id": shot.id})
-    if scene_id and scene_id not in {scene.id for scene in list_scenes(db, shot.project_id)}:
+    if scene_id and scene_id not in {scene.id for scene in list_scene_snapshots(db, shot.project_id)}:
         raise ValidationAppError("镜头场景不属于当前项目")
     if description is not None and not description.strip():
         raise ValidationAppError("镜头描述不能为空")
@@ -139,7 +147,7 @@ def validate_directing_request(
     显式旧基线直接拒绝；旧无请求体入口继续使用最新已保存稿和项目镜头设置。
     这里不强制独立审核人物／场景；完整工作流仍由已有第一审核关卡控制。
     """
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     if script is None:
         raise WorkflowError("还没有剧本，无法生成导演规划")
     if base_script_id is not None and base_script_id != script.id:
@@ -148,7 +156,7 @@ def validate_directing_request(
             details={"base_script_id": base_script_id, "current_script_id": script.id},
         )
     if base_script_fingerprint is not None:
-        assert_script_baseline(db, project.id, script.id, base_script_fingerprint)
+        script = assert_script_baseline_snapshot(db, project.id, script.id, base_script_fingerprint)
     target = shots_target if shots_target is not None else (project.settings or {}).get("shots_target") or 6
     try:
         validated = DirectingPlanInput(shots_target=target, instruction=instruction)
@@ -159,7 +167,7 @@ def validate_directing_request(
         ) from exc
     return {
         "base_script_id": script.id,
-        "base_script_fingerprint": script_fingerprint(script),
+        "base_script_fingerprint": script.fingerprint,
         "instruction": validated.instruction,
         "shots_target": validated.shots_target,
     }
@@ -202,7 +210,7 @@ async def build_directing_plan(
         instruction=instruction,
         shots_target=shots_target,
     )
-    script = assert_script_baseline(
+    script = assert_script_baseline_snapshot(
         db, project.id, request["base_script_id"], request["base_script_fingerprint"]
     )
     project_id = project.id
@@ -210,7 +218,7 @@ async def build_directing_plan(
         "id": script.id,
         "version": script.version,
         "title": script.title,
-        "fingerprint": script_fingerprint(script),
+        "fingerprint": script.fingerprint,
     }
     # 正文只传一次，保留全文与结构；工作区状态元信息不作为导演创作事实。
     script_input = deepcopy(script.content or {})
@@ -222,8 +230,8 @@ async def build_directing_plan(
         genre=script.genre,
         tone=script.tone,
     )
-    characters = [character_payload(db, item) for item in list_characters(db, project.id)]
-    scenes = [scene_payload(db, item) for item in list_scenes(db, project.id)]
+    characters = [item.generation_payload for item in list_character_snapshots(db, project.id)]
+    scenes = [item.generation_payload for item in list_scene_snapshots(db, project.id)]
 
     result = await run_agent(
         db,
@@ -245,7 +253,7 @@ async def build_directing_plan(
     # 与剧本编辑共用内容指纹校验；旧PATCH原位改文同样使本次生成失效。
     db.expire_all()
     try:
-        assert_script_baseline(db, project_id, source["id"], source["fingerprint"])
+        assert_script_baseline_reference(db, project_id, source["id"], source["fingerprint"])
     except ConflictError as exc:
         raise ConflictError(
             "剧本在导演规划期间发生变化，请刷新后重新生成",
@@ -286,7 +294,7 @@ def validate_storyboard_request(
     base_plan_fingerprint: str | None = None,
 ) -> dict:
     """入队及模型执行前共用来源校验，内部指纹只由服务器冻结。"""
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     plan = latest_plan(db, project.id)
     if script is None or plan is None:
         raise WorkflowError("生成分镜前需要先完成剧本与导演规划")
@@ -294,11 +302,11 @@ def validate_storyboard_request(
         raise ConflictError("剧本版本已更新，请刷新后重新生成分镜")
     if base_plan_id is not None and plan.id != base_plan_id:
         raise ConflictError("导演规划版本已更新，请刷新后重新生成分镜")
-    db.refresh(script)
+    script = get_script_snapshot(db, project.id, script.id)
     db.refresh(plan)
     if directing_source_status(db, plan)["source_status"] != "current":
         raise ConflictError("导演规划的剧本来源已过期或未记录，请重新生成导演规划")
-    script_hash = script_fingerprint(script)
+    script_hash = script.fingerprint
     plan_hash = directing_plan_fingerprint(plan)
     if base_script_fingerprint is not None and base_script_fingerprint != script_hash:
         raise ConflictError("剧本内容在排队期间发生变化，请刷新后重新生成")
@@ -325,13 +333,14 @@ def _validate_storyboard_references(db: Session, project_id: str, output, charac
         for ref in shot.characters:
             if not ref.character_id or ref.character_id not in character_ids:
                 raise AgentSchemaError("分镜人物引用无效", details={"generation_completed": True})
-            for field, model in [("costume_id", CharacterCostume), ("state_id", CharacterState)]:
+            for field in ("costume_id", "state_id"):
                 if value := getattr(ref, field):
-                    related = db.get(model, value)
-                    if (
-                        related is None
-                        or related.project_id != project_id
-                        or related.character_id != ref.character_id
+                    if not character_detail_reference_matches(
+                        db,
+                        project_id=project_id,
+                        character_id=ref.character_id,
+                        kind=field,
+                        reference_id=value,
                     ):
                         raise AgentSchemaError(
                             "分镜人物服装或状态引用无效", details={"generation_completed": True}
@@ -342,7 +351,7 @@ def _validate_storyboard_references(db: Session, project_id: str, output, charac
                     "分镜对白引用了当前项目不存在的人物", details={"generation_completed": True}
                 )
         for asset_id in shot.reference_asset_ids:
-            asset = db.get(Asset, asset_id)
+            asset = asset_service.asset_reference(db, asset_id)
             if asset is None or asset.project_id != project_id:
                 raise AgentSchemaError("分镜参考资产不属于当前项目", details={"generation_completed": True})
 
@@ -380,10 +389,10 @@ async def build_storyboard(
         base_plan_fingerprint=base_plan_fingerprint,
     )
     project_id = project.id
-    script = latest_script(db, project_id)
+    script = latest_script_snapshot(db, project_id)
     plan = latest_plan(db, project_id)
-    characters = list_characters(db, project_id)
-    scenes = list_scenes(db, project_id)
+    characters = list_character_snapshots(db, project_id)
+    scenes = list_scene_snapshots(db, project_id)
     script_input = deepcopy(script.content or {})
     script_input.pop("workspace_meta", None)
     script_input.update(
@@ -400,8 +409,8 @@ async def build_storyboard(
         agent_id="storyboard",
         payload=StoryboardInput(
             script=script_input,
-            characters=[character_payload(db, item) for item in characters],
-            scenes=[scene_payload(db, item) for item in scenes],
+            characters=[item.generation_payload for item in characters],
+            scenes=[item.generation_payload for item in scenes],
             plan=deepcopy(plan.content or {}),
             shots_target=(plan.content or {}).get("shot_strategy", {}).get("total_shots") or 6,
         ),
@@ -414,8 +423,8 @@ async def build_storyboard(
     except AppError as exc:
         raise ConflictError("生成期间的剧本或导演来源已变化", details={"generation_completed": True}) from exc
     output = result.output
-    characters = list_characters(db, project_id)
-    scenes = list_scenes(db, project_id)
+    characters = list_character_snapshots(db, project_id)
+    scenes = list_scene_snapshots(db, project_id)
     _validate_storyboard_references(db, project_id, output, characters, scenes)
     version = _next_version(db, Storyboard.version, Storyboard, project_id)
     board = Storyboard(

@@ -15,8 +15,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.project import Asset, Project
-from app.modules.assets.public import save_asset_reference
+from app.modules.assets.public import asset_reference, save_asset_reference
 from app.modules.platform import storage as storage_utils
 from app.modules.platform.constants import AssetKind, ProjectStatus
 from app.modules.platform.exceptions import NotFoundError, ValidationAppError
@@ -25,6 +24,7 @@ from app.modules.platform.ids import new_id
 from app.modules.platform.resources import PROJECT_ROOT
 from app.modules.platform.text import narrative
 from app.modules.projects import public as project_service
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.story.infrastructure.persistence.models import SourceDocument, StoryChapter
 
 logger = logging.getLogger(__name__)
@@ -186,7 +186,7 @@ def parse_document(db: Session, runtime: AppRuntime, document: SourceDocument) -
         删除范围仅为本 document_id；重复解析会重新分配章节 ID，不是无副作用重放。
         不提交，由外层回滚或提交；不调用模型。
     """
-    asset = db.get(Asset, document.asset_id)
+    asset = asset_reference(db, document.asset_id)
     if asset is None:
         raise NotFoundError("源文件资产不存在", details={"document_id": document.id})
     raw = runtime.read_media(asset.storage_key)

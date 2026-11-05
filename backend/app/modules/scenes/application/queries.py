@@ -7,10 +7,12 @@ canonical 是当前档案引用，不自动代表经审核的版本。
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.scenes.contracts import SceneSnapshot
 from app.modules.scenes.infrastructure.persistence.models import Scene, SceneProfile
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,19 @@ def list_scenes(db: Session, project_id: str) -> list[Scene]:
     return list(
         db.scalars(select(Scene).where(Scene.project_id == project_id).order_by(Scene.created_at, Scene.name))
     )
+
+
+def list_scene_snapshots(db: Session, project_id: str) -> list[SceneSnapshot]:
+    """沿用场景排序和当前档案投影，返回包含 visual_prompt 的生成配置深副本。"""
+    return [
+        SceneSnapshot(
+            id=scene.id,
+            project_id=scene.project_id,
+            name=scene.name,
+            generation_payload=deepcopy(scene_payload(db, scene)),
+        )
+        for scene in list_scenes(db, project_id)
+    ]
 
 
 def scene_profile_of(db: Session, scene: Scene) -> SceneProfile | None:

@@ -12,7 +12,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.bootstrap.agent_catalog import register_agents
+from app.bootstrap.composition import configure_application
 from app.modules.configuration import public as config_admin
 from app.modules.platform.execution import task_runner as task_service
 from app.modules.platform.persistence.session import init_engine, init_schema, reset_engine, session_scope
@@ -26,7 +26,7 @@ def create_lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncCont
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        register_agents()
+        configure_application()
         runtime = build_runtime(settings)
         set_runtime(runtime)
         init_engine(settings)

@@ -3,6 +3,8 @@
 公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。媒体用例按人物资产、镜头视频、配音字幕、剪辑渲染拆分；旧 `application.media` 只保留同一函数对象的兼容重新导出。
 
 本批迁移保留调用方 Session 和原有返回对象，未改变事务与业务规则。
+
+`application/approval.py` 拥有制作产物批准写入。reviews 的分镜校验只接收 `StoryboardApprovalTargets` ID DTO，批准仍作用于已验证的分镜、导演和镜头；当前镜头/成片关卡保持原有选择范围。
 跨业务依赖通过公开接口访问，Agent 实现在 `infrastructure/agents`，由启动目录装配。
 
 

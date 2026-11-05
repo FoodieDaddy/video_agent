@@ -10,6 +10,7 @@ from app.modules.platform.configuration.config_models import WorkflowNodeConfig
 from app.modules.platform.exceptions import ConflictError
 from app.modules.platform.persistence.session import session_scope
 from app.modules.production import public as production
+from app.modules.production.contracts import StoryboardApprovalTargets
 from app.modules.reviews import public as reviews
 from app.modules.workflow.public import WorkflowEngine
 
@@ -51,6 +52,11 @@ def test_workflow_second_gate_rechecks_approved_content_without_starting_media(
         )
         assert review.target_type == "workflow_node" and review.target_id == node.id
         assert review.decision["storyboard_snapshot"]["storyboard_id"]
+        targets = reviews.assert_review_targets(db, project=owner, review=review)
+        assert isinstance(targets, StoryboardApprovalTargets)
+        assert targets.project_id == pid
+        assert targets.storyboard_id == review.decision["storyboard_snapshot"]["storyboard_id"]
+        assert set(targets.shot_ids) == set(review.decision["storyboard_snapshot"]["shot_fingerprints"])
         reviews.decide(db, project=owner, review=review, status="approved")
         # approval/status均排除在内容指纹之外，刚通过的快照可以正常经过当前关卡。
         assert engine._handle_gate(db, run=run, project=owner, node=node) == "approved"

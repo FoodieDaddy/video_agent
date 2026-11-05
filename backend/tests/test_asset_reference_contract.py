@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -53,5 +54,57 @@ def test_save_asset_reference_persists_asset_but_returns_immutable_dto():
             assert row is not None and row.storage_key == reference.storage_key
             with pytest.raises(FrozenInstanceError):
                 reference.asset_id = "changed"
+    finally:
+        engine.dispose()
+
+
+def test_asset_queries_keep_project_kind_latest_and_detach_reference_values():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    runtime = SimpleNamespace(storage=MemoryStorage())
+    try:
+        with Session(engine, expire_on_commit=False, autoflush=False) as db:
+            project = create_project(db, owner_id="asset-owner", name="query DTO")
+            other = create_project(db, owner_id="asset-owner", name="other")
+            first = assets.save_asset(
+                db,
+                runtime,
+                project_id=project.id,
+                kind="film",
+                content=b"old",
+                width=640,
+                height=360,
+                duration_seconds=2.5,
+            )
+            first.created_at = datetime(2026, 11, 1)
+            second = assets.save_asset(
+                db,
+                runtime,
+                project_id=project.id,
+                kind="film",
+                content=b"new",
+                width=1280,
+                height=720,
+                duration_seconds=5.0,
+            )
+            second.created_at = first.created_at + timedelta(seconds=1)
+            assets.save_asset(db, runtime, project_id=other.id, kind="film", content=b"other")
+            assets.save_asset(db, runtime, project_id=project.id, kind="audio", content=b"audio")
+            db.flush()
+
+            latest = assets.latest_asset_reference(db, project.id, "film")
+            assert latest is not None and latest.asset_id == second.id
+            assert (latest.width, latest.height, latest.duration_seconds) == (1280, 720, 5.0)
+            assert assets.asset_url(latest) == f"/media/{second.storage_key}"
+            assert assets.asset_reference(db, first.id).asset_id == first.id
+            assert assets.asset_reference(db, "missing") is None
+            assert assets.asset_reference(db, "") is None
+            assert assets.latest_asset_reference(db, project.id, "missing") is None
+            assert assets.get_legacy_asset(db, first.id) is first
+            assert assets.latest_legacy_asset(db, project.id, "film") is second
+
+            second.width = 320
+            db.expunge_all()
+            assert latest.width == 1280
     finally:
         engine.dispose()

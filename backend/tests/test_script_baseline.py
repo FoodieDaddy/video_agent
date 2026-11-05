@@ -29,6 +29,9 @@ from app.modules.workflow.application.handlers import HandlerContext, handle_scr
 
 @pytest.fixture()
 def db():
+    from app.bootstrap.review_dependencies import configure_review_dependencies
+
+    configure_review_dependencies()
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
     with Session(engine, expire_on_commit=False, autoflush=False) as session:
@@ -140,6 +143,31 @@ def test_cross_module_baseline_reference_returns_dto_and_keeps_same_guard(db, pr
         story.assert_script_baseline_reference(db, project.id, script.id, expected)
 
 
+def test_script_snapshot_detaches_nested_json_and_refreshes_explicitly(db, project):
+    script = save(db, project)
+    original = story.script_fingerprint(script)
+    snapshot = story.latest_script_snapshot(db, project.id)
+    assert snapshot is not None and not hasattr(snapshot, "__table__")
+    assert snapshot.fingerprint == original
+    snapshot.content["events"][0]["description"] = "调用方修改副本"
+    assert script.content["events"][0]["description"] == "接过信"
+
+    db.execute(
+        update(Script)
+        .where(Script.id == script.id)
+        .values(content={**script.content, "script_text": "缓存外改写"})
+        .execution_options(synchronize_session=False)
+    )
+    assert story.latest_script_snapshot(db, project.id).script_text != "缓存外改写"
+    refreshed = story.latest_script_snapshot(db, project.id, refresh=True)
+    assert refreshed.script_text == "缓存外改写"
+    assert refreshed.fingerprint != original
+    with pytest.raises(ConflictError, match="正文或结构已更新"):
+        story.assert_script_baseline_snapshot(db, project.id, script.id, original)
+    checked = story.assert_script_baseline_snapshot(db, project.id, script.id, refreshed.fingerprint)
+    assert checked.fingerprint == refreshed.fingerprint
+
+
 @pytest.mark.parametrize("change", ["new_version", "legacy_patch", "missing_fingerprint"])
 def test_resume_rejects_stale_or_unverifiable_baseline_before_state_change(db, project, monkeypatch, change):
     script = save(db, project)
@@ -184,9 +212,9 @@ def test_script_handler_records_fingerprint_for_manual_and_generated_script(db, 
 
     async def generated(*args, **kwargs):
         assert not reuse
-        return script
+        return story.get_script_snapshot(db, project.id, script.id)
 
-    monkeypatch.setattr(story, "generate_script", generated)
+    monkeypatch.setattr(story, "generate_script_snapshot", generated)
     ctx = HandlerContext(
         db=db,
         runtime=SimpleNamespace(),

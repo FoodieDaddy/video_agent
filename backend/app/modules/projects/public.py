@@ -1,5 +1,10 @@
 """projects 模块公开入口；跨模块调用仅依赖此处声明的操作。"""
 
+from app.modules.projects.application.context import (
+    find_project_context,
+    record_project_cost,
+    set_project_status,
+)
 from app.modules.projects.application.service import (
     create_project,
     ensure_user,
@@ -10,6 +15,9 @@ from app.modules.projects.application.service import (
 )
 
 __all__ = [
+    "find_project_context",
+    "record_project_cost",
+    "set_project_status",
     "ensure_user",
     "create_project",
     "list_projects",

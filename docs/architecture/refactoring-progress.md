@@ -83,7 +83,7 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 1. 继续抽取剧本、人物、场景和制作中的领域规则，建立更窄的仓储和 DTO 边界；story 的基线指纹规则已进入 domain，workflow/reviews 和部分资产写入已消费 DTO，其他应用接口仍保留原 Session/ORM 契约。
 2. 业务 ORM 映射已归入所属模块并保留共享 Base；继续迁移仓储、DTO 与跨模块查询，再逐步收拢 `app.models` 聚合注册。
 3. production/media 已按人物资产、镜头视频、配音字幕、剪辑渲染和质量首轮拆分；后续保持职责边界并避免重新聚合成大文件。
-4. 模块边界稳定后再迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
+4. 在已收束的公开边界上迁入 apps/packages workspace，同时处理安装包、配置、样例和前端资源定位。
 5. 旧入口的删除另作兼容性变更，不与本次迁移混在一起。
 
 场景字段透传、审核版本快照、任务并发和取消等已知行为问题仍需独立处理。本批目录与职责迁移不宣称已经修复这些问题，也没有接入 LangGraph、DSH 或 Pi。
@@ -143,3 +143,13 @@ OpenAPI 与表结构对照说明兼容的外部结构保持，不代替行为测
 - `save_asset()` 仍保留原 ORM 返回，成片渲染和导出等尚未迁移的调用方暂沿用旧接口；文件写入、数据库事务与补偿语义不变。
 
 本地验证：`scripts/checks/quality_gate.py --scope lint --scope format --scope types --scope architecture --scope tests` 全部通过；后端 312 项通过，含 AssetReference 持久化与消费者回归；有一条第三方 Starlette `TestClient` 弃用提醒。测试使用隔离数据库和 mock，没有启动网页服务或调用真实模型。
+
+## 第九批：数据所有权、应用装配与 Schema 归属
+
+- 人物形象生成与版本写入归 characters；production 通过人物、场景和剧本值快照读取输入。资产读取归 assets 查询/仓储，成片旧 ORM 返回保留显式兼容适配。
+- 审核只协调，批准标记由人物、场景、制作模块分别写入；审核读取工作流通过组合根注入的只读端口，避免 reviews→workflow 反向依赖。分镜校验使用 ID DTO，原 ORM tuple 校验只用于兼容入口。
+- 项目状态与费用写入归 projects；任务分派读取 ProjectContext 快照，并以实体 ID 调用所属模块。任务存储只依赖 ProjectIdentity 协议。
+- 业务 Schema 按模块归属；14 个输出 Schema 和 7 个导出文件由 bootstrap 装配。ORM 聚合注册也归 bootstrap，旧 models/schemas 继续导出同一类对象。
+- platform 与 ai_runtime 不再反向导入 bootstrap；正式应用、兼容入口及离线检查显式装配。
+
+本批合并检查：lint、格式、选定类型检查通过；全量后端 336 项通过、1 项测试夹具仍直接修改旧项目实体而失败。该夹具已改用项目费用公开用例，所在文件 17 项回归通过。后续 workspace 全量门禁将覆盖本批最终状态。未调用真实模型或启动额外服务。

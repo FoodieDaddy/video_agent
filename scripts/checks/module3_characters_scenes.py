@@ -280,6 +280,9 @@ def build_sandbox(args: argparse.Namespace, report: Report) -> tuple[Path, Any, 
     load_settings(data_dir=...) 本身不足以隔离 DATABASE_URL/STORAGE_ROOT，
     而且函数末尾会立即建目录。因此环境覆盖必须发生在加载配置之前。
     """
+    from app.bootstrap.composition import configure_application
+
+    configure_application()
     root = Path(tempfile.mkdtemp(prefix="studio_m3_")).resolve()
     report.sandbox_path = str(root)
     config_dir, data_dir, storage_root = root / "config", root / "data", root / "storage"

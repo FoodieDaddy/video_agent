@@ -14,13 +14,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.platform.configuration.config_models import WorkflowConfig, WorkflowNodeConfig
 from app.modules.platform.constants import WorkflowStatus
 from app.modules.platform.exceptions import ValidationAppError, WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id, utcnow
+from app.modules.platform.persistence.models import Task
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.reviews import public as reviews
 from app.modules.workflow.application.handlers import HandlerContext, build_handlers, require_handler
 from app.modules.workflow.infrastructure.persistence.models import WorkflowCheckpoint, WorkflowRun
@@ -385,7 +385,7 @@ class WorkflowEngine:
         approved = reviews.approved_review(db, project.id, stage, workflow_run_id=run.id)
         if approved is not None:
             if stage == "storyboard":
-                reviews.assert_review_snapshot(db, project=project, review=approved)
+                reviews.assert_review_targets(db, project=project, review=approved)
             return "approved"
         # 驳回后显式恢复会在当前关卡新建待审单；仅重新提审，不自动返工模型。
         review = reviews.create_review(

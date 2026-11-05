@@ -1,6 +1,12 @@
 # scenes 业务模块
 
+制作模块通过 `list_scene_snapshots()` 读取场景身份、名称与生成配置深副本；既有档案投影、
+visual_prompt 和场景排序由原查询复用。旧 `list_scenes()`、`scene_payload()` 继续供所属模块
+及 API 兼容调用，制作模块不再接收 Scene ORM。
+
 公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。
+
+`application/approval.py` 拥有当前场景档案批准写入。reviews 通过公开入口协调第一关，保留 canonical 档案及缺档案的现有语义；阶段用例不提交，兼容单场景入口按原约定 flush。
 
 本批迁移保留调用方 Session 和原有返回对象，未改变事务与业务规则。
 跨业务依赖通过公开接口访问，Agent 实现在 `infrastructure/agents`，由启动目录装配。

@@ -29,6 +29,9 @@ from app.services.runtime import build_runtime  # noqa: E402
 
 
 async def main() -> int:
+    from app.bootstrap.composition import configure_application
+
+    configure_application()
     data_dir = Path(tempfile.mkdtemp(prefix="studio_smoke_"))
     # This run is offline by definition: never reach a configured real provider.
     os.environ.setdefault("AGENT_MODEL_PROVIDER", "mock")

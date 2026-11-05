@@ -9,10 +9,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.assets import public as asset_service
+from app.modules.assets.contracts import AssetReference
+from app.modules.assets.contracts import LegacyAssetRecord as Asset
 from app.modules.platform.constants import (
     AssetKind,
     ProjectStatus,
@@ -21,14 +21,16 @@ from app.modules.platform.exceptions import NotFoundError, WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
 from app.modules.platform.media import ffmpeg as ffmpeg_utils
+from app.modules.platform.persistence.models import Task
 from app.modules.production.application import queries as production_queries
 from app.modules.production.application.media_support import _output_dims
 from app.modules.production.infrastructure.persistence.models import (
     AudioTrack,
     EditingProject,
 )
+from app.modules.production.schemas.editing import EditingPlanInput
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
-from app.schemas.editing import EditingPlanInput
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +103,7 @@ async def build_editing_plan(
         + 1
     )
 
-    subtitle = db.scalar(
-        select(Asset)
-        .where(Asset.project_id == project.id, Asset.kind == AssetKind.SUBTITLE.value)
-        .order_by(Asset.created_at.desc())
-    )
+    subtitle = asset_service.latest_asset_reference(db, project.id, AssetKind.SUBTITLE.value)
     editing = EditingProject(
         id=new_id("edit"),
         project_id=project.id,
@@ -119,7 +117,7 @@ async def build_editing_plan(
             "clips": [clip.model_dump(mode="json") for clip in output.timeline],
             "subtitles": output.subtitles,
         },
-        subtitle_asset_id=subtitle.id if subtitle else "",
+        subtitle_asset_id=subtitle.asset_id if subtitle else "",
         duration_seconds=output.total_duration,
         agent_id="editing",
         model_id=result.model_id,
@@ -138,7 +136,7 @@ def _clip_source(db: Session, runtime: AppRuntime, clip: dict[str, Any], workdir
     本函数有文件和 FFmpeg 副作用，返回可渲染路径不代表真实视频生成成功。
     """
     asset_id = str(clip.get("video_asset_id") or "")
-    asset = db.get(Asset, asset_id) if asset_id else None
+    asset = asset_service.asset_reference(db, asset_id)
     if asset is not None and runtime.storage.exists(asset.storage_key):
         return runtime.media_path(asset.storage_key)
     # Degraded mode: no clip from the provider, synthesize a colour card.
@@ -156,7 +154,7 @@ def _clip_source(db: Session, runtime: AppRuntime, clip: dict[str, Any], workdir
 def _clip_audio(db: Session, runtime: AppRuntime, clip: dict[str, Any], workdir: Path) -> Path | None:
     """优先读取时间线指定音频，否则尝试镜头已有轨道；无可用资产返回 None，可继续无该音轨渲染。"""
     asset_id = str(clip.get("audio_asset_id") or "")
-    asset = db.get(Asset, asset_id) if asset_id else None
+    asset = asset_service.asset_reference(db, asset_id)
     if asset is not None and runtime.storage.exists(asset.storage_key):
         return runtime.media_path(asset.storage_key)
     shot_id = str(clip.get("shot_id") or "")
@@ -167,7 +165,7 @@ def _clip_audio(db: Session, runtime: AppRuntime, clip: dict[str, Any], workdir:
     )
     if track is None:
         return None
-    audio_asset = db.get(Asset, track.asset_id)
+    audio_asset = asset_service.asset_reference(db, track.asset_id)
     if audio_asset is None or not runtime.storage.exists(audio_asset.storage_key):
         return None
     return runtime.media_path(audio_asset.storage_key)
@@ -247,7 +245,7 @@ def render_film(
 
         subtitle_path: Path | None = None
         if editing.subtitle_asset_id:
-            subtitle_asset = db.get(Asset, editing.subtitle_asset_id)
+            subtitle_asset = asset_service.asset_reference(db, editing.subtitle_asset_id)
             if subtitle_asset is not None and runtime.storage.exists(subtitle_asset.storage_key):
                 subtitle_path = runtime.media_path(subtitle_asset.storage_key)
         if subtitle_path is not None:
@@ -339,7 +337,7 @@ def export_film(
     editing = editing or latest_editing(db, project.id)
     if editing is None or not editing.output_asset_id:
         raise NotFoundError("还没有可导出的成片，请先完成合成")
-    film = db.get(Asset, editing.output_asset_id)
+    film = asset_service.asset_reference(db, editing.output_asset_id)
     if film is None:
         raise NotFoundError("成片资产不存在")
     content = runtime.read_media(film.storage_key)
@@ -366,8 +364,8 @@ def export_film(
 
 def editing_public(db: Session, editing: EditingProject) -> dict:
     """读取剪辑工程关联成片并投影时间线、状态、错误与地址；只读，不进行重新合成。"""
-    output = db.get(Asset, editing.output_asset_id) if editing.output_asset_id else None
-    subtitle = db.get(Asset, editing.subtitle_asset_id) if editing.subtitle_asset_id else None
+    output = asset_service.asset_reference(db, editing.output_asset_id)
+    subtitle = asset_service.asset_reference(db, editing.subtitle_asset_id)
     return {
         "id": editing.id,
         "version": editing.version,
@@ -391,9 +389,13 @@ def latest_film_asset(db: Session, project_id: str) -> Asset | None:
     """
     editing = latest_editing(db, project_id)
     if editing and editing.output_asset_id:
-        return db.get(Asset, editing.output_asset_id)
-    return db.scalar(
-        select(Asset)
-        .where(Asset.project_id == project_id, Asset.kind == AssetKind.FILM.value)
-        .order_by(Asset.created_at.desc())
-    )
+        return asset_service.get_legacy_asset(db, editing.output_asset_id)
+    return asset_service.latest_legacy_asset(db, project_id, AssetKind.FILM.value)
+
+
+def latest_film_reference(db: Session, project_id: str) -> AssetReference | None:
+    """读取当前成片的稳定资产引用，保留旧工程优先与缺失引用语义。"""
+    editing = latest_editing(db, project_id)
+    if editing and editing.output_asset_id:
+        return asset_service.asset_reference(db, editing.output_asset_id)
+    return asset_service.latest_asset_reference(db, project_id, AssetKind.FILM.value)

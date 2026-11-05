@@ -7,6 +7,7 @@ ai_runtime 只负责注册和执行，不反向依赖具体业务 Agent。
 from __future__ import annotations
 
 from app.modules.ai_runtime.base import BaseAgent
+from app.modules.ai_runtime.registry import configure_default_agent_loader
 
 # 兼容原有的角色分组标识；它表达产品角色，不是动态调度策略。
 AGENT_FAMILIES: dict[str, tuple[str, ...]] = {
@@ -55,3 +56,7 @@ def register_agents() -> None:
     from app.modules.ai_runtime.registry import register_agent_classes
 
     register_agent_classes(builtin_agent_classes())
+
+
+# 应用声明默认装配；独立 ai_runtime 不依赖本文件。
+configure_default_agent_loader(register_agents)

@@ -14,14 +14,14 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.ai_runtime.base import AgentContext, AgentResult
 from app.modules.ai_runtime.infrastructure.persistence.models import AgentRun, BudgetEvent, ModelCallLog
 from app.modules.ai_runtime.registry import create_agent
-from app.modules.contracts.public import dumps, json_safe, serialize_output
+from app.modules.contracts.public import ProjectIdentity, dumps, json_safe, serialize_output
 from app.modules.platform.exceptions import AppError, ProviderError
 from app.modules.platform.execution.runtime import AppRuntime
+from app.modules.platform.persistence.models import Task
+from app.modules.projects.public import record_project_cost
 
 __all__ = ["dumps", "json_safe", "run_agent", "serialize_output"]
 
@@ -32,7 +32,7 @@ async def run_agent(
     db: Session,
     runtime: AppRuntime,
     *,
-    project: Project,
+    project: ProjectIdentity,
     agent_id: str,
     payload: dict[str, Any] | BaseModel,
     task: Task | None = None,
@@ -152,7 +152,7 @@ async def run_agent(
                 meta={"agent_id": agent_id, "model_id": run.model_id},
             )
         )
-        project.spent_usd = round((project.spent_usd or 0.0) + run.cost_usd, 6)
+        record_project_cost(db, project.id, run.cost_usd)
 
     try:
         evaluation = (

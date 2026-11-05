@@ -2,6 +2,12 @@
 
 公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。
 
+人物图片生成、形象版本登记及审批写入归本模块持有，原 production 人物资产路径继续转发。
+跨模块读取优先使用人物身份、声线和计数 DTO，头像查询只返回资产 ID；服装/状态归属由
+本模块仓储核对。新人物图片调用传 `character_ids`，在模块内读取实体；旧 ORM 参数继续兼容。
+制作读取使用 `list_character_snapshots()`，DTO 含身份、名称与生成 payload 深副本；其生成字段
+复用原 `character_payload()`，缺档案默认值和人物排序保持一致。
+
 本批迁移保留调用方 Session 和原有返回对象，未改变事务与业务规则。
 跨业务依赖通过公开接口访问，Agent 实现在 `infrastructure/agents`，由启动目录装配。
 

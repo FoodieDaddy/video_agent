@@ -6,6 +6,10 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "list_scene_snapshots": ("app.modules.scenes.application.queries", "list_scene_snapshots"),
+    "approve_current_scenes": ("app.modules.scenes.application.approval", "approve_current_scenes"),
+    "approve_scene_profile": ("app.modules.scenes.application.approval", "approve_scene_profile"),
+    "approve_scene_entity": ("app.modules.scenes.application.approval", "approve_scene_entity"),
     "list_scenes": ("app.modules.scenes.application.queries", "list_scenes"),
     "scene_profile_of": ("app.modules.scenes.application.queries", "scene_profile_of"),
     "scene_payload": ("app.modules.scenes.application.queries", "scene_payload"),

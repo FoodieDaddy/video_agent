@@ -10,22 +10,22 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.characters.infrastructure.persistence.models import (
     Character,
     CharacterProfile,
     CharacterRelationship,
 )
+from app.modules.characters.schemas.character import CharacterDescriptionInput, CharacterExtractionInput
 from app.modules.platform.constants import CharacterStatus, ProjectStatus
 from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
 from app.modules.story import public as documents
-from app.modules.story.public import latest_script
-from app.schemas.character import CharacterDescriptionInput, CharacterExtractionInput
+from app.modules.story.public import latest_script_snapshot
 
 from .queries import _profile_version, list_characters, profile_of
 
@@ -112,7 +112,7 @@ async def extract_characters(
         不在此归并别名；本项目旧关系整体替换，无效端点与自身关系跳过。
         只 flush、不提交；调用模型并更新属性和关系，重放不保证无副作用。
     """
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     if script is None:
         raise WorkflowError("还没有剧本，无法提取人物")
 
@@ -214,7 +214,7 @@ async def describe_characters(
     """
     # 每个人物分别接收已提取的证据、原始章节和最新剧本；章节/剧本提供背景，
     # source_facts 与 inferred_items 的字段区分本身不代表完成了事实核查。
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     chapter_texts = documents.chapter_payloads(db, project.id)
     profiles: list[CharacterProfile] = []
     for character in characters:

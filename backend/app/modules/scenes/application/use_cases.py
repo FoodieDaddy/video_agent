@@ -11,16 +11,16 @@ import logging
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.scenes.infrastructure.persistence.models import Scene, SceneProfile
+from app.modules.scenes.schemas.scene import SceneDescriptionInput, SceneExtractionInput
 from app.modules.story import public as documents
-from app.modules.story.public import latest_script
-from app.schemas.scene import SceneDescriptionInput, SceneExtractionInput
+from app.modules.story.public import latest_script_snapshot
 
 from .queries import list_scenes, scene_profile_of
 
@@ -108,7 +108,7 @@ async def extract_scenes(
         当前只保存名称、章节索引、环境摘要；已有非空摘要保留，细分属性未完整持久化。
         候选置 draft 并 flush、不提交；外部调用和属性更新不属于无副作用重放。
     """
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     if script is None:
         raise WorkflowError("还没有剧本，无法提取场景")
 

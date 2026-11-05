@@ -221,7 +221,9 @@ def test_paid_result_audit_survives_final_base_conflict(client, headers, project
                 cost_usd=0.25,
             )
         )
-        project.spent_usd = 0.25
+        from app.modules.projects.public import record_project_cost
+
+        record_project_cost(db, project.id, 0.25)
         db.flush()
         raise ConflictError("剧本已更新", details={"generation_completed": True})
 

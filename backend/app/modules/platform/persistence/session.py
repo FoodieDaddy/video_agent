@@ -61,10 +61,7 @@ def get_session_factory() -> sessionmaker[Session]:
 
 def init_schema() -> None:
     """聚合注册映射并创建缺失表；不承担已有表结构升级或数据迁移。"""
-    # 兼容迁移边界：业务映射仍由 app.models 聚合注册，只在建表时延迟导入。
-    # Base/metadata 与连接工厂在 platform 中保持单份，不在这里定义业务表。
-    import app.models  # noqa: F401
-
+    # 表映射由启动组合根显式注册；独立使用 platform 时只创建已提供的映射。
     Base.metadata.create_all(bind=get_engine())
 
 

@@ -6,6 +6,24 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "generate_shot_video_by_id": ("app.modules.production.application.commands", "generate_shot_video_by_id"),
+    "latest_film_reference": ("app.modules.production.application.editing", "latest_film_reference"),
+    "approve_storyboard_targets": (
+        "app.modules.production.application.approval",
+        "approve_storyboard_targets",
+    ),
+    "approve_current_shots": ("app.modules.production.application.approval", "approve_current_shots"),
+    "approve_shot_selection": ("app.modules.production.application.approval", "approve_shot_selection"),
+    "approve_shot_entity": ("app.modules.production.application.approval", "approve_shot_entity"),
+    "approve_latest_render": ("app.modules.production.application.approval", "approve_latest_render"),
+    "prepare_storyboard_review_snapshot": (
+        "app.modules.production.application.baselines",
+        "prepare_storyboard_review_snapshot",
+    ),
+    "assert_storyboard_approval_targets": (
+        "app.modules.production.application.baselines",
+        "assert_storyboard_approval_targets",
+    ),
     "get_storyboard": ("app.modules.production.application.baselines", "get_storyboard"),
     "storyboard_source_status": ("app.modules.production.application.baselines", "storyboard_source_status"),
     "storyboard_review_snapshot": (
@@ -38,16 +56,16 @@ _EXPORTS = {
     ),
     "refine_prompts": ("app.modules.production.application.use_cases", "refine_prompts"),
     "character_asset_version": (
-        "app.modules.production.application.character_assets",
+        "app.modules.characters.public",
         "character_asset_version",
     ),
     "generate_character_assets": (
-        "app.modules.production.application.character_assets",
+        "app.modules.characters.public",
         "generate_character_assets",
     ),
-    "character_assets": ("app.modules.production.application.character_assets", "character_assets"),
+    "character_assets": ("app.modules.characters.public", "character_assets"),
     "character_asset_public": (
-        "app.modules.production.application.character_assets",
+        "app.modules.characters.public",
         "character_asset_public",
     ),
     "generate_shot_videos": ("app.modules.production.application.shot_video", "generate_shot_videos"),
@@ -65,7 +83,7 @@ _EXPORTS = {
     "editing_public": ("app.modules.production.application.editing", "editing_public"),
     "latest_film_asset": ("app.modules.production.application.editing", "latest_film_asset"),
     "ensure_character_approved": (
-        "app.modules.production.application.character_assets",
+        "app.modules.characters.public",
         "ensure_character_approved",
     ),
     "collect_metrics": ("app.modules.production.application.quality", "collect_metrics"),
@@ -73,7 +91,7 @@ _EXPORTS = {
     "latest_evaluation": ("app.modules.production.application.quality", "latest_evaluation"),
     "evaluation_public": ("app.modules.production.application.quality", "evaluation_public"),
     "CHARACTER_ASSET_KINDS": (
-        "app.modules.production.application.character_assets",
+        "app.modules.characters.public",
         "CHARACTER_ASSET_KINDS",
     ),
 }

@@ -6,5 +6,8 @@
 import sys
 from importlib import import_module
 
+from app.bootstrap.review_dependencies import configure_review_dependencies
+
+configure_review_dependencies()
 _implementation = import_module("app.modules.reviews.application.service")
 sys.modules[__name__] = _implementation

@@ -4,6 +4,8 @@
 
 - 公开入口：`public.py`。
 - 用例实现：`application/`。
+- 读取边界：`application/queries.py` 投影只读 `AssetReference`；SQL 查询集中在 `infrastructure/persistence/repository.py`。空 ID/记录缺失继续返回 None；按项目和类型查询最近资产保留创建时间倒序规则。
+- 兼容返回：`get_legacy_asset()`、`latest_legacy_asset()` 只供尚未迁移的成片 ORM 返回接口使用；新跨模块读取使用 DTO。DTO 不负责访问授权或证明存储文件存在。
 - 边界：story 与 production 都依赖本模块；本模块不反向依赖业务生成模块。
 - 兼容：旧 `app.services` 入口指向同一实现模块，保留签名、ORM返回与monkeypatch观察点。
 - 事务：沿用调用方提供的Session；不因迁移额外提交或另开Session。

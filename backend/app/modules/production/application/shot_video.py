@@ -9,11 +9,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.character import CharacterAsset
-from app.models.ops import Task
-from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.assets import public as asset_service
+from app.modules.characters import public as character_module
 from app.modules.platform.constants import (
     AssetKind,
     ProjectStatus,
@@ -22,14 +20,16 @@ from app.modules.platform.constants import (
 from app.modules.platform.exceptions import NotFoundError, ValidationAppError, WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
 from app.modules.production.application import queries as production_queries
 from app.modules.production.application.media_support import _asset_bytes, _output_dims
 from app.modules.production.infrastructure.persistence.models import (
     Shot,
     VideoGeneration,
 )
+from app.modules.production.schemas.video import ShotVideoInput
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
-from app.schemas.video import ShotVideoInput
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +51,9 @@ def _shot_reference(db: Session, runtime: AppRuntime, shot: Shot) -> tuple[bytes
         character_id = str((ref or {}).get("character_id") or "")
         if not character_id:
             continue
-        row = db.scalar(
-            select(CharacterAsset)
-            .where(
-                CharacterAsset.character_id == character_id,
-                CharacterAsset.kind == "portrait",
-            )
-            .order_by(CharacterAsset.approved.desc(), CharacterAsset.version.desc())
-        )
-        if row is not None:
-            references.append(row.asset_id)
+        asset_id = character_module.portrait_asset_id(db, character_id)
+        if asset_id is not None:
+            references.append(asset_id)
     content = _asset_bytes(runtime, references[0], db) if references else None
     return content, references
 
@@ -231,7 +224,7 @@ def video_generations(db: Session, shot_id: str) -> list[VideoGeneration]:
 
 def video_public(db: Session, row: VideoGeneration) -> dict:
     """读取候选关联资产并投影视频状态和地址；无资产时保留空 URL，只读、不提交。"""
-    asset = db.get(Asset, row.asset_id) if row.asset_id else None
+    asset = asset_service.asset_reference(db, row.asset_id)
     return {
         "id": row.id,
         "shot_id": row.shot_id,

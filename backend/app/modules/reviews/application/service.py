@@ -9,27 +9,27 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
+from typing import TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.character import Character, CharacterAsset
-from app.models.ops import WorkflowRun
-from app.models.production import EditingProject, Shot
-from app.models.project import Project
-from app.models.scene import Scene
 from app.modules.characters import public as character_module
-from app.modules.platform.constants import ProjectStatus, ReviewStatus, ShotStatus
+from app.modules.platform.constants import ProjectStatus, ReviewStatus
 from app.modules.platform.exceptions import ConflictError, NotFoundError, ValidationAppError
 from app.modules.platform.ids import new_id, utcnow
 from app.modules.production import public as production_module
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
+from app.modules.reviews.application.ports import workflow_review_reader
 from app.modules.reviews.domain.decisions import DecisionViolation, review_decision_violation
 from app.modules.reviews.infrastructure.persistence.models import Review, ReviewComment
 from app.modules.scenes import public as scene_module
 from app.modules.story import public as story_module
 
 logger = logging.getLogger(__name__)
+
+_Entity = TypeVar("_Entity")
 
 VALID_STAGES = {"characters_scenes", "storyboard", "shots", "final"}
 
@@ -64,17 +64,12 @@ def create_review(
         raise ValidationAppError(f"未知审核阶段 '{stage}'")
     snapshot = None
     if stage == "storyboard":
-        board = (
-            production_module.get_storyboard(db, target_id)
-            if target_type == "storyboard" and target_id
-            else production_module.latest_board(db, project.id)
+        snapshot = production_module.prepare_storyboard_review_snapshot(
+            db, project.id, target_id if target_type == "storyboard" and target_id else None
         )
-        if board is None:
-            raise ValidationAppError("还没有分镜，无法提交第二轮审核")
-        snapshot = production_module.storyboard_review_snapshot(db, project.id, board)
         # 工作流保留节点target便于追踪；独立审核的target直接指向实际分镜。
         if target_type != "workflow_node":
-            target_type, target_id = "storyboard", board.id
+            target_type, target_id = "storyboard", snapshot["storyboard_id"]
     existing = pending_review(db, project.id, stage, workflow_run_id=workflow_run_id or None)
     if existing is not None:
         if snapshot is not None and (existing.decision or {}).get("storyboard_snapshot") != snapshot:
@@ -237,17 +232,16 @@ def decide(
 
     frozen = None
     if status == ReviewStatus.APPROVED.value and review.stage == "storyboard":
-        frozen = assert_review_snapshot(db, project=project, review=review)
+        frozen = assert_review_targets(db, project=project, review=review)
     if status == ReviewStatus.APPROVED.value and review.workflow_run_id:
-        run = db.get(WorkflowRun, review.workflow_run_id)
+        run = workflow_review_reader()(db, review.workflow_run_id, project.id)
         if run is None or run.project_id != project.id:
             raise ConflictError("审核关联的工作流不存在或归属不匹配，请重新开始流程")
         # 直接依赖 story 的公开校验，不通过 workflow 引擎形成模块反向依赖。
-        for output in ((run.state or {}).get("outputs") or {}).values():
-            if isinstance(output, dict) and output.get("script_id"):
-                story_module.assert_script_baseline_reference(
-                    db, project.id, output["script_id"], output.get("script_fingerprint")
-                )
+        for baseline in run.script_baselines:
+            story_module.assert_script_baseline_reference(
+                db, project.id, baseline.script_id, baseline.fingerprint
+            )
 
     review.status = status
     review.comment = comment
@@ -273,12 +267,23 @@ def decide(
 
 
 def assert_review_snapshot(db: Session, *, project: Project, review: Review):
-    """第二关批准/工作流续跑共用核验；拒绝无需通过旧快照，便于显式退回后重提。"""
+    """兼容旧校验返回：仍返回制作 ORM 元组；新协调调用使用 assert_review_targets。"""
     if review.project_id != project.id:
         raise ConflictError("审核记录不属于当前项目")
     if review.stage != "storyboard":
         return None
     return production_module.assert_storyboard_review_snapshot(
+        db, project.id, (review.decision or {}).get("storyboard_snapshot")
+    )
+
+
+def assert_review_targets(db: Session, *, project: Project, review: Review):
+    """第二关批准/工作流续跑共用核验；只返回稳定目标 ID。"""
+    if review.project_id != project.id:
+        raise ConflictError("审核记录不属于当前项目")
+    if review.stage != "storyboard":
+        return None
+    return production_module.assert_storyboard_approval_targets(
         db, project.id, (review.decision or {}).get("storyboard_snapshot")
     )
 
@@ -293,53 +298,22 @@ def _apply_approval(db: Session, *, project: Project, stage: str, storyboard_tar
     if stage == "characters_scenes":
         # 第一关按审核时项目中可解析的当前档案更新 approved/approved_version，
         # 并标记人物、场景为 approved；这不是创建审核记录时冻结的档案快照。
-        for character in character_module.list_characters(db, project.id):
-            profile = character_module.profile_of(db, character)
-            if profile is not None:
-                profile.approved = True
-                character.approved_version = profile.version
-            character.status = "approved"
-            for asset in db.scalars(
-                select(CharacterAsset).where(CharacterAsset.character_id == character.id)
-            ):
-                asset.approved = True
-        for scene in scene_module.list_scenes(db, project.id):
-            profile = scene_module.scene_profile_of(db, scene)
-            if profile is not None:
-                profile.approved = True
-                scene.approved_version = profile.version
-            scene.status = "approved"
+        character_module.approve_current_characters(db, project.id)
+        scene_module.approve_current_scenes(db, project.id)
         touch_status(db, project, ProjectStatus.CHARACTERS_READY)
 
     elif stage == "storyboard":
         if storyboard_targets is None:
             raise ConflictError("分镜审核缺少已验证的版本快照")
-        board, plan, shots = storyboard_targets
-        board.approved = True
-        board.status = "approved"
-        plan.approved = True
-        plan.status = "approved"
-        for shot in shots:
-            shot.approved = True
-            if shot.status == ShotStatus.DRAFT.value:
-                shot.status = ShotStatus.PROMPT_READY.value
+        production_module.approve_storyboard_targets(db, storyboard_targets)
         touch_status(db, project, ProjectStatus.STORYBOARD_READY)
 
     elif stage == "shots":
-        for shot in production_module.list_shots(db, project.id):
-            shot.approved = True
-            if shot.selected_video_id:
-                shot.status = ShotStatus.APPROVED.value
+        production_module.approve_current_shots(db, project.id)
         touch_status(db, project, ProjectStatus.VIDEO_READY)
 
     elif stage == "final":
-        editing = db.scalar(
-            select(EditingProject)
-            .where(EditingProject.project_id == project.id)
-            .order_by(EditingProject.version.desc())
-        )
-        if editing is not None and editing.status == "rendered":
-            editing.status = "approved"
+        production_module.approve_latest_render(db, project.id)
         touch_status(db, project, ProjectStatus.EDITED)
     db.flush()
 
@@ -353,7 +327,7 @@ def review_public(db: Session, review: Review) -> dict:
     target_status = "unknown"
     if snapshot is not None:
         try:
-            production_module.assert_storyboard_review_snapshot(db, review.project_id, snapshot)
+            production_module.assert_storyboard_approval_targets(db, review.project_id, snapshot)
             target_status = "current"
         except (ConflictError, NotFoundError):
             target_status = "stale"
@@ -384,50 +358,28 @@ def review_public(db: Session, review: Review) -> dict:
     }
 
 
-def approve_shot(db: Session, project: Project, shot: Shot) -> Shot:
+def approve_shot(db: Session, project: Project, shot: _Entity) -> _Entity:
     """核对项目归属后仅批准给定镜头，返回原 Shot。
 
     不属于项目抛 NotFoundError；存在选中视频引用时设置 approved 状态，不验证媒体字节。
     仅 flush、不提交，不等同于处理工作流的 Review 记录。
     """
-    if shot.project_id != project.id:
-        raise NotFoundError("镜头不存在", details={"shot_id": shot.id})
-    shot.approved = True
-    if shot.selected_video_id:
-        shot.status = ShotStatus.APPROVED.value
-    db.flush()
-    return shot
+    return production_module.approve_shot_entity(db, project.id, shot)
 
 
-def approve_character(db: Session, project: Project, character: Character) -> Character:
+def approve_character(db: Session, project: Project, character: _Entity) -> _Entity:
     """核对项目归属并批准人物当前可解析档案，返回原 Character。
 
     外项目实体抛 NotFoundError；缺档案时仍沿用设置人物 approved 的行为。
     仅 flush、不提交；不创建审核决定，也不恢复工作流。
     """
-    if character.project_id != project.id:
-        raise NotFoundError("人物不存在", details={"character_id": character.id})
-    profile = character_module.profile_of(db, character)
-    if profile is not None:
-        profile.approved = True
-        character.approved_version = profile.version
-    character.status = "approved"
-    db.flush()
-    return character
+    return character_module.approve_character_entity(db, project.id, character)
 
 
-def approve_scene(db: Session, project: Project, scene: Scene) -> Scene:
+def approve_scene(db: Session, project: Project, scene: _Entity) -> _Entity:
     """核对项目归属并批准场景当前可解析档案，返回原 Scene。
 
     外项目实体抛 NotFoundError；缺档案时仍可设置场景 approved 状态。
     仅 flush、不提交；此操作不替代工作流审核记录或其恢复步骤。
     """
-    if scene.project_id != project.id:
-        raise NotFoundError("场景不存在", details={"scene_id": scene.id})
-    profile = scene_module.scene_profile_of(db, scene)
-    if profile is not None:
-        profile.approved = True
-        scene.approved_version = profile.version
-    scene.status = "approved"
-    db.flush()
-    return scene
+    return scene_module.approve_scene_entity(db, project.id, scene)

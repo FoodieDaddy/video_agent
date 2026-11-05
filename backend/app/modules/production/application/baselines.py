@@ -6,7 +6,8 @@ from copy import deepcopy
 
 from sqlalchemy.orm import Session
 
-from app.modules.platform.exceptions import ConflictError, NotFoundError
+from app.modules.platform.exceptions import ConflictError, NotFoundError, ValidationAppError
+from app.modules.production.contracts import StoryboardApprovalTargets
 from app.modules.production.infrastructure.persistence.models import DirectingPlan, Storyboard
 
 from .fingerprints import content_fingerprint, directing_plan_fingerprint, shot_edit_fingerprint
@@ -89,3 +90,24 @@ def assert_storyboard_review_snapshot(db: Session, project_id: str, snapshot: di
     if current != snapshot:
         raise ConflictError("待审分镜内容已变化，请先退回，再重新提审", details={"storyboard_id": board.id})
     return board, db.get(DirectingPlan, board.directing_plan_id), list_shots(db, project_id, board=board)
+
+
+def prepare_storyboard_review_snapshot(db: Session, project_id: str, board_id: str | None = None) -> dict:
+    """选择提审分镜并返回快照，不把 ORM 传给审核模块。"""
+    board = get_storyboard(db, board_id) if board_id else latest_board(db, project_id)
+    if board is None:
+        raise ValidationAppError("还没有分镜，无法提交第二轮审核")
+    return storyboard_review_snapshot(db, project_id, board)
+
+
+def assert_storyboard_approval_targets(
+    db: Session, project_id: str, snapshot: dict | None
+) -> StoryboardApprovalTargets:
+    """验证冻结快照，并只返回批准目标 ID；旧 ORM 校验入口继续可用。"""
+    board, plan, shots = assert_storyboard_review_snapshot(db, project_id, snapshot)
+    return StoryboardApprovalTargets(
+        project_id=project_id,
+        storyboard_id=board.id,
+        directing_plan_id=plan.id,
+        shot_ids=tuple(shot.id for shot in shots),
+    )

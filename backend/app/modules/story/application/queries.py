@@ -7,12 +7,13 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.platform.exceptions import ConflictError, NotFoundError
-from app.modules.story.contracts import ScriptBaselineReference
+from app.modules.story.contracts import ScriptBaselineReference, ScriptSnapshot
 from app.modules.story.domain.script_baseline import (
     build_script_fingerprint_input,
     script_text_of_content,
@@ -25,12 +26,49 @@ from app.modules.story.infrastructure.persistence.models import Script, SourceDo
 logger = logging.getLogger(__name__)
 
 
+def _latest_script_row(db: Session, project_id: str, *, refresh: bool = False) -> Script | None:
+    """读取最新行；需要防止 identity map 陈旧内容时显式刷新。"""
+    statement = select(Script).where(Script.project_id == project_id).order_by(Script.version.desc())
+    if refresh:
+        statement = statement.execution_options(populate_existing=True)
+    return db.scalar(statement)
+
+
 def latest_script(db: Session, project_id: str) -> Script | None:
     """按 version 降序读取项目最新剧本，无记录返回 None。
 
     不限制 approved 状态，不改变数据库；需要指定审核版本时由上游明确选择。
     """
-    return db.scalar(select(Script).where(Script.project_id == project_id).order_by(Script.version.desc()))
+    return _latest_script_row(db, project_id)
+
+
+def _script_snapshot(script: Script) -> ScriptSnapshot:
+    """在所属模块内将 ORM 投影成深副本；不给跨模块调用方暴露 Session。"""
+    return ScriptSnapshot(
+        id=script.id,
+        project_id=script.project_id,
+        version=script.version,
+        title=script.title,
+        logline=script.logline,
+        synopsis=script.synopsis,
+        genre=script.genre,
+        tone=script.tone,
+        content=deepcopy(script.content or {}),
+        script_text=script_text_of(script),
+        fingerprint=script_fingerprint(script),
+        approved=script.approved,
+    )
+
+
+def latest_script_snapshot(db: Session, project_id: str, *, refresh: bool = False) -> ScriptSnapshot | None:
+    """读取最新剧本 DTO；refresh=True 时刷新已加载的 ORM 行，再生成深副本。"""
+    script = _latest_script_row(db, project_id, refresh=refresh)
+    return _script_snapshot(script) if script is not None else None
+
+
+def get_script_snapshot(db: Session, project_id: str, script_id: str) -> ScriptSnapshot:
+    """刷新并读取项目内指定剧本 DTO；错误语义与旧读取接口保持一致。"""
+    return _script_snapshot(get_project_script(db, project_id, script_id))
 
 
 def script_payload(script: Script | None) -> dict:
@@ -88,12 +126,7 @@ def _matching_script_baseline(
             "当前工作流缺少剧本基线指纹，无法确认旧稿安全，请取消旧流程后重新开始",
             details={"project_id": project_id, "script_id": script_id, "reason": "missing_fingerprint"},
         )
-    current = db.scalar(
-        select(Script)
-        .where(Script.project_id == project_id)
-        .order_by(Script.version.desc())
-        .execution_options(populate_existing=True)
-    )
+    current = _latest_script_row(db, project_id, refresh=True)
     details = {
         "project_id": project_id,
         "script_id": script_id,
@@ -138,6 +171,14 @@ def assert_script_baseline_reference(
         version=current.version,
         fingerprint=current_fingerprint,
     )
+
+
+def assert_script_baseline_snapshot(
+    db: Session, project_id: str, script_id: str, fingerprint: str | None
+) -> ScriptSnapshot:
+    """刷新、校验剧本基线并返回正文深副本；冲突顺序沿用旧接口。"""
+    current, _ = _matching_script_baseline(db, project_id, script_id, fingerprint)
+    return _script_snapshot(current)
 
 
 def get_project_script(db: Session, project_id: str, script_id: str) -> Script:

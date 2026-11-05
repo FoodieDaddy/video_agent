@@ -10,22 +10,44 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.platform.constants import ProjectStatus
 from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
 from app.modules.platform.persistence.versions import next_version as _next_version
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.projects.public import touch_status
 from app.modules.story.application import documents
+from app.modules.story.contracts import ScriptSnapshot
 from app.modules.story.infrastructure.persistence.models import Script, StoryEvent
-from app.schemas.script import ScriptInput
+from app.modules.story.schemas.script import ScriptInput
 
-from .queries import _latest_document_id
+from .queries import _latest_document_id, _script_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+async def generate_script_snapshot(
+    db: Session,
+    runtime: AppRuntime,
+    *,
+    project: Project,
+    task: Task | None = None,
+    workflow_run_id: str = "",
+    user_id: str = "",
+) -> ScriptSnapshot:
+    """复用剧本生成用例，返回供跨模块消费的深副本 DTO；仅 flush，不提交。"""
+    script = await generate_script(
+        db,
+        runtime,
+        project=project,
+        task=task,
+        workflow_run_id=workflow_run_id,
+        user_id=user_id,
+    )
+    return _script_snapshot(script)
 
 
 def update_script(

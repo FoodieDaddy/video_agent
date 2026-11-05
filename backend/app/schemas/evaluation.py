@@ -1,33 +1,7 @@
-"""Evaluation agent I/O schemas."""
+"""旧 Schema 导入入口；唯一类定义位于 production 模块。"""
 
-from __future__ import annotations
+import sys
+from importlib import import_module
 
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class EvaluationIssue(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    type: str
-    severity: str = "medium"
-    description: str = ""
-
-
-class EvaluationInput(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    stage: str = "final"
-    metrics: dict = Field(default_factory=dict)
-    project_summary: dict = Field(default_factory=dict)
-    thresholds: dict[str, float] = Field(default_factory=dict)
-
-
-class EvaluationReport(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    shot_id: str | None = None
-    overall_score: float = 0.0
-    scores: dict[str, float] = Field(default_factory=dict)
-    issues: list[EvaluationIssue] = Field(default_factory=list)
-    recommendation: str = "review"
-    summary: str = ""
+_implementation = import_module("app.modules.production.schemas.evaluation")
+sys.modules[__name__] = _implementation

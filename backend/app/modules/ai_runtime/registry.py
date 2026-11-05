@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from threading import RLock
 
 from app.modules.ai_runtime.base import BaseAgent
@@ -15,6 +16,13 @@ from app.modules.platform.exceptions import ConfigurationError
 AGENT_CLASSES: dict[str, type[BaseAgent]] = {}
 _registration_lock = RLock()
 _builtins_registered = False
+_default_loader: Callable[[], None] | None = None
+
+
+def configure_default_agent_loader(loader: Callable[[], None]) -> None:
+    """由应用提供可选的默认装配入口；运行机制不导入应用或业务角色。"""
+    global _default_loader
+    _default_loader = loader
 
 
 def register_agent_classes(classes: dict[str, type[BaseAgent]]) -> None:
@@ -33,11 +41,8 @@ def _ensure_registered() -> None:
     if _builtins_registered:
         return
     with _registration_lock:
-        if not _builtins_registered:
-            # 组合根是惰性装配边界；业务实现只由该位置导入一次。
-            from app.bootstrap.agent_catalog import register_agents
-
-            register_agents()
+        if not _builtins_registered and _default_loader is not None:
+            _default_loader()
 
 
 def agent_ids() -> list[str]:

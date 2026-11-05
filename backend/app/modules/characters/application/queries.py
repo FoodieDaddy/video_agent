@@ -7,13 +7,56 @@ canonical 指向当前选择，不等同于已审核版本；需要审批证据�
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.modules.characters.contracts import (
+    CharacterMetrics,
+    CharacterReference,
+    CharacterSnapshot,
+    CharacterVoiceReference,
+)
+from app.modules.characters.infrastructure.persistence import queries as repository
 from app.modules.characters.infrastructure.persistence.models import Character, CharacterProfile
 
 logger = logging.getLogger(__name__)
+
+
+def find_character_reference(db: Session, project_id: str, character_id: str) -> CharacterReference | None:
+    """读取同项目人物身份；不存在或归属不符返回 None。"""
+    character = db.get(Character, character_id)
+    if character is None or character.project_id != project_id:
+        return None
+    return CharacterReference(id=character.id, project_id=character.project_id)
+
+
+def portrait_asset_id(db: Session, character_id: str) -> str | None:
+    """查询头像资产引用，沿用 approved 优先、版本倒序规则；不返回形象 ORM。"""
+    return repository.preferred_portrait_asset_id(db, character_id)
+
+
+def voice_reference(db: Session, character_id: str) -> CharacterVoiceReference | None:
+    """读取人物声线 DTO；空 ID 或没有记录时返回 None。"""
+    if not character_id:
+        return None
+    row = repository.first_voice(db, character_id)
+    return CharacterVoiceReference(voice_id=row.voice_id) if row is not None else None
+
+
+def character_metrics(db: Session, project_id: str) -> CharacterMetrics:
+    """读取当前记录数量 DTO；不代表人物或图片的真实质量。"""
+    return CharacterMetrics(*repository.count_character_records(db, project_id))
+
+
+def character_detail_reference_matches(
+    db: Session, *, project_id: str, character_id: str, kind: str, reference_id: str
+) -> bool:
+    """确认分镜服装/状态引用归属；错误映射由调用方按原有业务顺序执行。"""
+    return repository.detail_reference_matches(
+        db, project_id=project_id, character_id=character_id, kind=kind, reference_id=reference_id
+    )
 
 
 def list_characters(db: Session, project_id: str) -> list[Character]:
@@ -25,6 +68,19 @@ def list_characters(db: Session, project_id: str) -> list[Character]:
             .order_by(Character.created_at, Character.name)
         )
     )
+
+
+def list_character_snapshots(db: Session, project_id: str) -> list[CharacterSnapshot]:
+    """沿用人物排序和当前档案投影，返回生成 payload 的深副本；不提交。"""
+    return [
+        CharacterSnapshot(
+            id=character.id,
+            project_id=character.project_id,
+            name=character.name,
+            generation_payload=deepcopy(character_payload(db, character)),
+        )
+        for character in list_characters(db, project_id)
+    ]
 
 
 def profile_of(db: Session, character: Character) -> CharacterProfile | None:

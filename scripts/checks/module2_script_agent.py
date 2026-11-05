@@ -252,6 +252,9 @@ def build_sandbox(
     仅传 data_dir 不足以覆盖 DATABASE_URL、STORAGE_ROOT 和配置中的相对路径。
     环境中的模型强制覆盖必须置空而非删除，避免 .env 的 setdefault 再次注入。
     """
+    from app.bootstrap.composition import configure_application
+
+    configure_application()
     sandbox = Path(tempfile.mkdtemp(prefix="studio_m2_")).resolve()
     if report is not None:
         report.sandbox_path = str(sandbox)

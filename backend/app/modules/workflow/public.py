@@ -28,8 +28,10 @@ from app.modules.workflow.application.handlers import (
     handler_names,
     require_handler,
 )
+from app.modules.workflow.application.review_queries import workflow_review_reference
 
 __all__ = [
+    "workflow_review_reference",
     "WorkflowEngine",
     "get_run",
     "latest_run",

@@ -44,6 +44,7 @@ TECHNICAL_INTERFACES = {
         "persistence.base",
         "persistence.session",
         "persistence.task_records",
+        "persistence.models",
         "persistence.versions",
     },
     "contracts": {"public"},

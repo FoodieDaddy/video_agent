@@ -9,13 +9,11 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.character import CharacterVoice
-from app.models.ops import Task
-from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
 from app.modules.assets import public as asset_service
 from app.modules.assets.contracts import AssetReference
 from app.modules.characters import public as character_module
+from app.modules.characters.contracts import CharacterVoiceReference
 from app.modules.platform.constants import (
     AssetKind,
     AudioKind,
@@ -24,6 +22,7 @@ from app.modules.platform.exceptions import WorkflowError
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
 from app.modules.platform.media import ffmpeg as ffmpeg_utils
+from app.modules.platform.persistence.models import Task
 from app.modules.platform.text import narrative
 from app.modules.production.application import queries as production_queries
 from app.modules.production.infrastructure.agents.audio import VoiceSynthesisInput
@@ -31,8 +30,9 @@ from app.modules.production.infrastructure.persistence.models import (
     AudioTrack,
     Shot,
 )
+from app.modules.production.schemas.audio import AudioPlanInput
+from app.modules.projects.contracts import ProjectContext as Project
 from app.modules.story import public as story_module
-from app.schemas.audio import AudioPlanInput
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +69,9 @@ def _dialogue_lines_from_shots(shots: list[Shot]) -> list[dict[str, Any]]:
     return lines
 
 
-def _voice_for(db: Session, character_id: str) -> CharacterVoice | None:
-    """按人物 ID 读取一个已有语音设置；ID 为空或无记录返回 None，不写入。"""
-    if not character_id:
-        return None
-    return db.scalar(select(CharacterVoice).where(CharacterVoice.character_id == character_id))
+def _voice_for(db: Session, character_id: str) -> CharacterVoiceReference | None:
+    """通过人物公开查询读取声线 DTO；空 ID 或无记录返回 None。"""
+    return character_module.voice_reference(db, character_id)
 
 
 async def generate_audio(
@@ -111,7 +109,7 @@ async def generate_audio(
     shots = shots or production_queries.list_shots(db, project.id)
     if not shots:
         raise WorkflowError("还没有分镜，无法生成配音")
-    script = story_module.latest_script(db, project.id)
+    script = story_module.latest_script_snapshot(db, project.id)
     plan = production_queries.latest_plan(db, project.id)
     shot_payloads = [production_queries.shot_payload(db, shot) for shot in shots]
 
@@ -153,7 +151,7 @@ async def generate_audio(
     if not lines:
         lines = _dialogue_lines_from_shots(shots)
 
-    characters = {item.name: item for item in character_module.list_characters(db, project.id)}
+    characters = {item.name: item for item in character_module.list_character_snapshots(db, project.id)}
     created = 0
     failures: list[dict[str, str]] = []
     shot_voice_asset: dict[str, str] = {}
@@ -315,7 +313,7 @@ def audio_tracks(db: Session, project_id: str, *, shot_id: str | None = None) ->
 
 def audio_public(db: Session, track: AudioTrack) -> dict:
     """读取音轨关联资产后投影 API 字段；不写入或提交，不验证音频内容质量。"""
-    asset = db.get(Asset, track.asset_id) if track.asset_id else None
+    asset = asset_service.asset_reference(db, track.asset_id)
     return {
         "id": track.id,
         "shot_id": track.shot_id,

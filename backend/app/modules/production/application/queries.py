@@ -12,8 +12,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.project import Project
-from app.modules.characters.public import list_characters
+from app.modules.characters.public import list_character_snapshots
 from app.modules.platform.exceptions import ConflictError, NotFoundError
 from app.modules.production.infrastructure.persistence.models import (
     DirectingPlan,
@@ -21,8 +20,9 @@ from app.modules.production.infrastructure.persistence.models import (
     ShotCharacter,
     Storyboard,
 )
-from app.modules.scenes.public import list_scenes
-from app.modules.story.public import assert_script_baseline, latest_script
+from app.modules.projects.contracts import ProjectContext as Project
+from app.modules.scenes.public import list_scene_snapshots
+from app.modules.story.public import assert_script_baseline_reference, latest_script_snapshot
 
 from .fingerprints import shot_edit_fingerprint
 
@@ -59,7 +59,7 @@ def directing_source_status(db: Session, plan: DirectingPlan) -> dict[str, Any]:
         return {"source_script": source if isinstance(source, dict) else None, "source_status": "unknown"}
     try:
         # 共用查询会刷新ORM缓存，也能识别旧PATCH在同一ID上的内容变化。
-        assert_script_baseline(db, plan.project_id, source["id"], source["fingerprint"])
+        assert_script_baseline_reference(db, plan.project_id, source["id"], source["fingerprint"])
     except ConflictError:
         return {"source_script": source, "source_status": "stale"}
     return {"source_script": source, "source_status": "current"}
@@ -90,7 +90,7 @@ def shot_payload(db: Session, shot: Shot) -> dict:
     selected 引用按现有字段值返回，不代表资产存在、媒体质量或审核已经满足。
     """
     characters = list(db.scalars(select(ShotCharacter).where(ShotCharacter.shot_id == shot.id)))
-    names = {character.id: character.name for character in list_characters(db, shot.project_id)}
+    names = {character.id: character.name for character in list_character_snapshots(db, shot.project_id)}
     return {
         "shot_id": shot.id,
         "order": shot.order_index,
@@ -143,7 +143,7 @@ def project_summary(db: Session, project: Project) -> dict[str, Any]:
     前置：project 已授权；返回当前读取结果而非版本快照或质量评分，不写入或提交。
     synopsis 的长度处理沿用现有规则；摘要不保证跨多条查询的并发快照一致性。
     """
-    script = latest_script(db, project.id)
+    script = latest_script_snapshot(db, project.id)
     plan = latest_plan(db, project.id)
     board = latest_board(db, project.id)
     shots = list_shots(db, project.id)
@@ -161,7 +161,7 @@ def project_summary(db: Session, project: Project) -> dict[str, Any]:
         "visual_style": ((plan.content or {}).get("visual_style") if plan else ""),
         "storyboard_version": board.version if board else 0,
         "shot_count": len(shots),
-        "characters": [character.name for character in list_characters(db, project.id)],
-        "scenes": [scene.name for scene in list_scenes(db, project.id)],
+        "characters": [character.name for character in list_character_snapshots(db, project.id)],
+        "scenes": [scene.name for scene in list_scene_snapshots(db, project.id)],
         "total_duration_seconds": round(sum(shot.duration_seconds for shot in shots), 2),
     }

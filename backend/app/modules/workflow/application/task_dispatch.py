@@ -10,8 +10,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.ops import Task
-from app.models.project import Project
 from app.modules.platform.configuration.config_models import WorkflowNodeConfig
 from app.modules.platform.constants import TaskStatus
 from app.modules.platform.exceptions import ConflictError, NotFoundError, ValidationAppError
@@ -23,6 +21,7 @@ from app.modules.platform.execution.task_runner import (
     reset_runner,
 )
 from app.modules.platform.ids import utcnow
+from app.modules.platform.persistence.models import Task
 from app.modules.platform.persistence.task_records import (
     create_task,
     emit,
@@ -33,6 +32,8 @@ from app.modules.platform.persistence.task_records import (
     task_events,
     task_public,
 )
+from app.modules.projects.contracts import ProjectContext as Project
+from app.modules.projects.public import find_project_context
 
 STAGE_TASKS = {
     "script",
@@ -79,7 +80,7 @@ def _script_assist_handler(payload: dict[str, Any]) -> TaskHandler:
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
         from app.modules.story import public as story
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         if project is None:
             raise NotFoundError("项目不存在", details={"project_id": task.project_id})
         try:
@@ -114,7 +115,7 @@ def _workflow_handler(payload: dict[str, Any]) -> TaskHandler:
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
         from app.modules.workflow.public import WorkflowEngine
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         if project is None:
             raise NotFoundError("项目不存在", details={"project_id": task.project_id})
         engine = WorkflowEngine(runtime)
@@ -135,7 +136,7 @@ def _resume_handler(payload: dict[str, Any]) -> TaskHandler:
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
         from app.modules.workflow.public import WorkflowEngine, get_run
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         run = get_run(db, task.project_id, str(payload.get("workflow_run_id") or ""))
         engine = WorkflowEngine(runtime)
         run = await engine.resume(db, run=run, project=project, task=task, user_id=task.created_by)
@@ -148,7 +149,7 @@ def _stage_handler(stage: str) -> TaskHandler:
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
         from app.modules.workflow.public import HandlerContext, require_handler
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         if project is None:
             raise NotFoundError("项目不存在", details={"project_id": task.project_id})
         node = WorkflowNodeConfig(id=stage, type="handler", handler=stage, title=stage)
@@ -171,20 +172,16 @@ def _shot_video_handler(payload: dict[str, Any]) -> TaskHandler:
     """Regenerate a single shot without touching the rest of the storyboard."""
 
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
-        from app.models.production import Shot
         from app.modules.production import public as media
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         if project is None:
             raise NotFoundError("项目不存在", details={"project_id": task.project_id})
-        shot = db.get(Shot, str(payload.get("shot_id") or ""))
-        if shot is None or shot.project_id != project.id:
-            raise NotFoundError("镜头不存在", details=payload)
-        return await media.generate_shot_videos(
+        return await media.generate_shot_video_by_id(
             db,
             runtime,
             project=project,
-            shots=[shot],
+            shot_id=str(payload.get("shot_id") or ""),
             task=task,
             user_id=task.created_by,
             stop=lambda: get_runner(runtime).is_cancelled(task.id),
@@ -197,21 +194,21 @@ def _character_images_handler(payload: dict[str, Any]) -> TaskHandler:
     """Generate (or regenerate) character images for one character."""
 
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
-        from app.models.character import Character
+        from app.modules.characters.public import find_character_reference
         from app.modules.production import public as media
 
-        project = db.get(Project, task.project_id)
+        project = find_project_context(db, task.project_id)
         if project is None:
             raise NotFoundError("项目不存在", details={"project_id": task.project_id})
-        character = db.get(Character, str(payload.get("character_id") or ""))
-        if character is None or character.project_id != project.id:
+        character = find_character_reference(db, project.id, str(payload.get("character_id") or ""))
+        if character is None:
             raise NotFoundError("人物不存在", details=payload)
         kinds = tuple(payload.get("kinds") or media.CHARACTER_ASSET_KINDS)
         return await media.generate_character_assets(
             db,
             runtime,
             project=project,
-            characters=[character],
+            character_ids=[character.id],
             kinds=kinds,
             task=task,
             user_id=task.created_by,
@@ -223,14 +220,11 @@ def _character_images_handler(payload: dict[str, Any]) -> TaskHandler:
 
 def _parse_document_handler(payload: dict[str, Any]) -> TaskHandler:
     async def handler(db: Session, runtime: AppRuntime, task: Task) -> dict[str, Any]:
-        from app.models.story import SourceDocument
         from app.modules.story import public as documents
 
-        document = db.get(SourceDocument, str(payload.get("document_id") or ""))
-        if document is None:
-            raise NotFoundError("文档不存在", details=payload)
-        chapters = documents.parse_document(db, runtime, document)
-        return {"document_id": document.id, "chapters": len(chapters)}
+        return documents.parse_project_document(
+            db, runtime, project_id=task.project_id, document_id=str(payload.get("document_id") or "")
+        )
 
     return handler
 

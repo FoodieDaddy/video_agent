@@ -7,4 +7,5 @@ import sys
 from importlib import import_module
 
 _implementation = import_module("app.modules.platform.persistence.session")
+import_module("app.bootstrap.model_catalog").register_models()
 sys.modules[__name__] = _implementation

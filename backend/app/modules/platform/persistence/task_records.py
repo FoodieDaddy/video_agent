@@ -11,8 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.project import Project
-from app.modules.contracts.public import json_safe
+from app.modules.contracts.public import ProjectIdentity, json_safe
 from app.modules.platform.constants import TaskStatus
 from app.modules.platform.exceptions import NotFoundError
 from app.modules.platform.ids import new_id
@@ -22,7 +21,7 @@ from app.modules.platform.persistence.models import Task, TaskEvent
 def create_task(
     db: Session,
     *,
-    project: Project,
+    project: ProjectIdentity,
     type: str,
     payload: dict[str, Any] | None = None,
     user_id: str = "",

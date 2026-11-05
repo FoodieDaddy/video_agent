@@ -10,10 +10,13 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.contracts.public import ProjectIdentity
 from app.modules.platform.constants import ProjectStatus
 from app.modules.platform.exceptions import NotFoundError, PermissionDeniedError
 from app.modules.platform.ids import new_id
 from app.modules.projects.infrastructure.persistence.models import Project, ProjectMember, User
+
+from .context import set_project_status
 
 
 def ensure_user(db: Session, user_id: str, *, role: str = "user", name: str = "") -> User:
@@ -125,13 +128,12 @@ def get_project(db: Session, project_id: str, user_id: str, *, require_role: str
     return project
 
 
-def touch_status(db: Session, project: Project, status: ProjectStatus | str) -> Project:
+def touch_status(db: Session, project: ProjectIdentity, status: ProjectStatus | str) -> ProjectIdentity:
     """将项目状态设置为给定值并 flush，返回原 Project。
 
     本操作不校验状态迁移是否合法；业务前置条件与事务提交均由调用方负责。
     """
-    project.status = str(status)
-    db.flush()
+    set_project_status(db, project.id, str(status))
     return project
 
 

@@ -2,6 +2,11 @@
 
 公开入口为 `public.py`；内部 `application` 按读取投影与业务用例分开。剧本正文和工作流基线指纹规则位于纯 `domain` 层；application 负责将 ORM 行投影为不可变指纹输入并执行数据库读取。审核/恢复跨模块使用 `ScriptBaselineReference` DTO，不接收校验返回的 `Script` ORM。剧本、章节、源文档和故事事件的 ORM 映射归 story 模块持有，旧 `app.models.story` 路径转发到同一映射模块。
 
+跨模块剧本读取使用 `latest_script_snapshot()`、`get_script_snapshot()` 和
+`assert_script_baseline_snapshot()`；返回的 `ScriptSnapshot.content` 为深副本，修改它不会
+改写持久化内容。最新版本查询可显式传 `refresh=True` 刷新会话缓存，指定版本读取和基线校验
+始终刷新。剧本生成也提供 snapshot 返回入口，原 ORM 返回接口保留给 HTTP 兼容和迁移期调用方。
+
 本批迁移保留调用方 Session 和原有返回对象，未改变事务与业务规则。
 跨业务依赖通过公开接口访问，Agent 实现在 `infrastructure/agents`，由启动目录装配。
 

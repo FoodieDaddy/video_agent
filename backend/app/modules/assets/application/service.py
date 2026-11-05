@@ -11,6 +11,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.assets.application.queries import reference_of
 from app.modules.assets.contracts import AssetReference
 from app.modules.assets.infrastructure.persistence.models import Asset, AssetVersion
 from app.modules.platform import storage as storage_utils
@@ -120,14 +121,7 @@ def save_asset_reference(
         meta=meta,
         created_by=created_by,
     )
-    return AssetReference(
-        asset_id=asset.id,
-        project_id=asset.project_id,
-        kind=asset.kind,
-        storage_key=asset.storage_key,
-        mime_type=asset.mime_type,
-        size_bytes=asset.size_bytes,
-    )
+    return reference_of(asset)
 
 
 def record_asset_version(
@@ -179,7 +173,7 @@ def list_assets(db: Session, project_id: str, *, kind: str | None = None, limit:
     return list(db.scalars(statement.order_by(Asset.created_at.desc()).limit(limit)))
 
 
-def asset_url(asset: Asset) -> str:
+def asset_url(asset: Asset | AssetReference) -> str:
     return f"/media/{asset.storage_key}"
 
 

@@ -6,6 +6,14 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "latest_script_snapshot": ("app.modules.story.application.queries", "latest_script_snapshot"),
+    "get_script_snapshot": ("app.modules.story.application.queries", "get_script_snapshot"),
+    "assert_script_baseline_snapshot": (
+        "app.modules.story.application.queries",
+        "assert_script_baseline_snapshot",
+    ),
+    "generate_script_snapshot": ("app.modules.story.application.use_cases", "generate_script_snapshot"),
+    "parse_project_document": ("app.modules.story.application.commands", "parse_project_document"),
     "latest_script": ("app.modules.story.application.queries", "latest_script"),
     "script_payload": ("app.modules.story.application.queries", "script_payload"),
     "script_text_of": ("app.modules.story.application.queries", "script_text_of"),

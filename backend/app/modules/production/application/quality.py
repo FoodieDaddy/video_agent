@@ -12,23 +12,24 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.character import CharacterAsset, CharacterProfile
-from app.models.ops import Task
-from app.models.project import Asset, Project
 from app.modules.ai_runtime.public import run_agent
+from app.modules.assets import public as asset_service
 from app.modules.characters import public as character_module
 from app.modules.platform.constants import AssetKind
 from app.modules.platform.execution.runtime import AppRuntime
 from app.modules.platform.ids import new_id
+from app.modules.platform.persistence.models import Task
 from app.modules.production.application import queries as production_queries
-from app.modules.production.application.editing import latest_editing, latest_film_asset
+from app.modules.production.application.editing import latest_editing, latest_film_reference
 from app.modules.production.infrastructure.persistence.models import (
     AudioTrack,
     EvaluationResult,
     EvaluationRun,
     VideoGeneration,
 )
-from app.schemas.evaluation import EvaluationInput
+from app.modules.production.schemas.evaluation import EvaluationInput
+from app.modules.projects.contracts import ProjectContext as Project
+from app.modules.projects.public import find_project_context
 
 logger = logging.getLogger(__name__)
 
@@ -64,27 +65,18 @@ def collect_metrics(db: Session, project: Project, *, stage: str = "final") -> d
     audio_tracks = int(
         db.scalar(select(func.count(AudioTrack.id)).where(AudioTrack.project_id == project.id)) or 0
     )
-    subtitle = db.scalar(
-        select(Asset)
-        .where(Asset.project_id == project.id, Asset.kind == AssetKind.SUBTITLE.value)
-        .order_by(Asset.created_at.desc())
-    )
-    film = latest_film_asset(db, project.id)
-    characters = character_module.list_characters(db, project.id)
-    profiles = int(
-        db.scalar(select(func.count(CharacterProfile.id)).where(CharacterProfile.project_id == project.id))
-        or 0
-    )
-    character_images = int(
-        db.scalar(select(func.count(CharacterAsset.id)).where(CharacterAsset.project_id == project.id)) or 0
-    )
+    subtitle = asset_service.latest_asset_reference(db, project.id, AssetKind.SUBTITLE.value)
+    film = latest_film_reference(db, project.id)
+    character_counts = character_module.character_metrics(db, project.id)
+    profiles = character_counts.profiles
+    character_images = character_counts.assets
     approved_shots = sum(1 for shot in shots if shot.approved)
     editing = latest_editing(db, project.id)
 
     dialogue_lines = sum(len(shot.dialogue or []) for shot in shots)
     coverage = round(shots_with_video / len(shots), 3) if shots else 0.0
     character_consistency = 0.85 if character_images and profiles else 0.55
-    if characters and character_images >= len(characters):
+    if character_counts.characters and character_images >= character_counts.characters:
         character_consistency = 0.9
 
     return {
@@ -97,7 +89,7 @@ def collect_metrics(db: Session, project: Project, *, stage: str = "final") -> d
         "audio_tracks": audio_tracks,
         "dialogue_lines": dialogue_lines,
         "subtitles": bool(subtitle),
-        "character_count": len(characters),
+        "character_count": character_counts.characters,
         "character_profiles": profiles,
         "character_assets": character_images,
         "character_consistency": character_consistency,
@@ -105,7 +97,7 @@ def collect_metrics(db: Session, project: Project, *, stage: str = "final") -> d
         "render_status": (editing.status if editing else ""),
         "rendered": bool(film),
         "final_video": bool(film),
-        "budget_usd": round(float(project.spent_usd or 0.0), 4),
+        "budget_usd": round(float(find_project_context(db, project.id).spent_usd or 0.0), 4),
     }
 
 

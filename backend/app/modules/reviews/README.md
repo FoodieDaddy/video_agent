@@ -7,6 +7,9 @@
 - 纯规则：`domain/decisions.py` 判断审核结论是否合法、当前记录是否仍待审，
   不依赖数据库或 HTTP；应用用例将违规原因映射回原异常并执行原来的状态写入。
 - 边界：审核通过与工作流恢复是两个操作，不在此启动后续模型任务。
+- 写入归属：人物、场景、分镜、镜头和剪辑的批准标记分别由所属模块的公开 approval 用例写入，reviews 只协调决定与项目阶段；每批仍由调用方统一 flush/提交。
+- 分镜目标：提审和批准使用 production 返回的快照与 `StoryboardApprovalTargets` ID DTO。旧 `assert_review_snapshot` 保留 ORM 元组返回，新的审批和工作流续跑调用 `assert_review_targets`。
+- 工作流读取：reviews 定义 `WorkflowReviewReader` 端口，由 `bootstrap/review_dependencies.py` 注入 workflow 的只读投影；正式启动与旧兼容服务入口显式装配。独立使用 canonical 用例时须注入 reader 或应用 loader，未装配时明确报错；审核模块不导入工作流模型、引擎或应用 bootstrap。
 - 兼容：旧 `app.services` 入口指向同一实现模块，保留签名、ORM返回与monkeypatch观察点。
 - 事务：沿用调用方提供的Session；不因迁移额外提交或另开Session。
 - 验证：`backend/tests/test_review_domain.py` 直接验证状态规则与异常映射；

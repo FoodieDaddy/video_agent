@@ -6,8 +6,9 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.models.project import Asset, Project
+from app.modules.assets.public import asset_reference
 from app.modules.platform.execution.runtime import AppRuntime
+from app.modules.projects.contracts import ProjectContext as Project
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def _output_dims(project: Project) -> tuple[int, int]:
 
 def _asset_bytes(runtime: AppRuntime, asset_id: str, db: Session) -> bytes | None:
     """按资产 ID 读取媒体字节；记录不存在返回 None，实际存储读取错误向上传播。"""
-    asset = db.get(Asset, asset_id) if asset_id else None
+    asset = asset_reference(db, asset_id)
     if asset is None or not runtime.storage.exists(asset.storage_key):
         return None
     return runtime.read_media(asset.storage_key)
