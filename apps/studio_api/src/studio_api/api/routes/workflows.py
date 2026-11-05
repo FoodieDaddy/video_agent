@@ -7,11 +7,9 @@ from typing import Any
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
-from app.models.ops import Review, WorkflowRun
 from studio_api.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from studio_api.api.schemas import ReviewCommentCreate, ReviewDecision, WorkflowStart
 from studio_platform.constants import WorkflowStatus
-from studio_platform.exceptions import NotFoundError
 from studio_reviews import public as reviews
 from studio_workflow import public as workflow_service
 
@@ -147,7 +145,7 @@ async def decide_review(
     db.flush()
 
     response: dict[str, Any] = {"review": reviews.review_public(db, review)}
-    run = db.get(WorkflowRun, review.workflow_run_id) if review.workflow_run_id else None
+    run = workflow_service.find_run_reference(db, review.workflow_run_id) if review.workflow_run_id else None
     if (
         payload.resume_workflow
         and payload.status == "approved"
@@ -208,8 +206,6 @@ def add_comment(
     }
 
 
-def _load_review(db, review_id: str) -> Review:
-    review = db.get(Review, review_id)
-    if review is None:
-        raise NotFoundError("审核记录不存在", details={"review_id": review_id})
-    return review
+def _load_review(db, review_id: str):
+    """保留旧直接调用入口，读取与错误映射由审核模块拥有。"""
+    return reviews.get_review_by_id(db, review_id)

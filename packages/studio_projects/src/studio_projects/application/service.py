@@ -51,6 +51,7 @@ def create_project(
     genre: str = "",
     budget_limit_usd: float = 0.0,
     settings: dict | None = None,
+    aspect_ratio: str | None = None,
 ) -> Project:
     """创建项目、所有者用户及 owner 成员关系。
 
@@ -79,6 +80,42 @@ def create_project(
     db.add(project)
     db.flush()
     db.add(ProjectMember(project_id=project.id, user_id=owner_id, role="owner"))
+    db.flush()
+    if aspect_ratio is not None:
+        project.aspect_ratio = aspect_ratio
+        db.flush()
+    return project
+
+
+def update_project_details(
+    db: Session,
+    *,
+    project_id: str,
+    name: str | None = None,
+    description: str | None = None,
+    aspect_ratio: str | None = None,
+    budget_limit_usd: float | None = None,
+    settings: dict | None = None,
+) -> Project:
+    """修改已授权项目的编辑字段；只 flush，由调用方提交。
+
+    settings 按顶层键合并；None 与未提供都保留旧值，空字典不清空已有设置。
+    这里沿用旧 HTTP PATCH 的原值写入语义，不额外裁剪项目名或同步 settings.aspect_ratio。
+    ORM 返回只为旧项目序列化接口保留，调用方不应修改该行。
+    """
+    project = db.get(Project, project_id)
+    if project is None:
+        raise NotFoundError(f"Project '{project_id}' not found", details={"project_id": project_id})
+    if settings is not None:
+        project.settings = {**(project.settings or {}), **settings}
+    for field, value in (
+        ("name", name),
+        ("description", description),
+        ("aspect_ratio", aspect_ratio),
+        ("budget_limit_usd", budget_limit_usd),
+    ):
+        if value is not None:
+            setattr(project, field, value)
     db.flush()
     return project
 

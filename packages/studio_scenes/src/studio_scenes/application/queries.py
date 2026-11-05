@@ -12,10 +12,19 @@ from copy import deepcopy
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from studio_platform.exceptions import NotFoundError
 from studio_scenes.contracts import SceneSnapshot
 from studio_scenes.infrastructure.persistence.models import Scene, SceneProfile
 
 logger = logging.getLogger(__name__)
+
+
+def get_scene(db: Session, scene_id: str) -> Scene:
+    """按 ID 读取场景兼容实体，不刷新缓存；调用方随后核对项目访问权限。"""
+    scene = db.get(Scene, scene_id)
+    if scene is None:
+        raise NotFoundError("场景不存在", details={"scene_id": scene_id})
+    return scene
 
 
 def list_scenes(db: Session, project_id: str) -> list[Scene]:

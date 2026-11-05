@@ -6,6 +6,7 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "get_character": ("studio_characters.application.queries", "get_character"),
     "list_character_snapshots": ("studio_characters.application.queries", "list_character_snapshots"),
     "find_character_reference": ("studio_characters.application.queries", "find_character_reference"),
     "approve_current_characters": (

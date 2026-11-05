@@ -6,6 +6,11 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "list_directing_plans": ("studio_production.application.queries", "list_directing_plans"),
+    "list_storyboards": ("studio_production.application.queries", "list_storyboards"),
+    "list_editing_versions": ("studio_production.application.queries", "list_editing_versions"),
+    "get_shot": ("studio_production.application.queries", "get_shot"),
+    "get_video_generation": ("studio_production.application.queries", "get_video_generation"),
     "generate_shot_video_by_id": ("studio_production.application.commands", "generate_shot_video_by_id"),
     "latest_film_reference": ("studio_production.application.editing", "latest_film_reference"),
     "approve_storyboard_targets": (

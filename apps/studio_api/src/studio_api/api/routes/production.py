@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Query
-from sqlalchemy import select
 
-from app.models.production import DirectingPlan, EditingProject, Shot, Storyboard, VideoGeneration
 from studio_api.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from studio_api.api.schemas import DirectingRequest, ShotUpdate, StoryboardRequest
 from studio_api.api.serializers import board_public, film_public, plan_public
@@ -41,13 +39,7 @@ async def direct_project(
 @router.get("/projects/{project_id}/directing")
 def get_directing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = list(
-        db.scalars(
-            select(DirectingPlan)
-            .where(DirectingPlan.project_id == project.id)
-            .order_by(DirectingPlan.version.desc())
-        )
-    )
+    rows = production_module.list_directing_plans(db, project.id)
     return {
         "plan": plan_public(rows[0], source=production_module.directing_source_status(db, rows[0]))
         if rows
@@ -100,11 +92,7 @@ async def build_storyboard(
 @router.get("/projects/{project_id}/storyboards")
 def get_storyboard(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = list(
-        db.scalars(
-            select(Storyboard).where(Storyboard.project_id == project.id).order_by(Storyboard.version.desc())
-        )
-    )
+    rows = production_module.list_storyboards(db, project.id)
     return {
         "board": board_public(db, rows[0] if rows else None),
         "versions": [
@@ -243,9 +231,7 @@ def select_shot_version(
 ) -> dict[str, Any]:
     shot = _load_shot(db, shot_id)
     project = owner_project(db, shot.project_id, user)
-    generation = db.get(VideoGeneration, video_id)
-    if generation is None:
-        raise NotFoundError("视频版本不存在", details={"video_id": video_id})
+    generation = production_module.get_video_generation(db, video_id)
     production_module.select_video(db, project=project, shot=shot, generation=generation)
     db.flush()
     return {
@@ -291,13 +277,7 @@ async def build_editing(
 def get_editing(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
     editing = production_module.latest_editing(db, project.id)
-    versions = list(
-        db.scalars(
-            select(EditingProject)
-            .where(EditingProject.project_id == project.id)
-            .order_by(EditingProject.version.desc())
-        )
-    )
+    versions = production_module.list_editing_versions(db, project.id)
     return {
         "editing": production_module.editing_public(db, editing) if editing else None,
         "versions": [
@@ -370,8 +350,6 @@ def get_evaluation(project_id: str, db: SessionDep, user: UserDep) -> dict[str, 
     }
 
 
-def _load_shot(db, shot_id: str) -> Shot:
-    shot = db.get(Shot, shot_id)
-    if shot is None:
-        raise NotFoundError("镜头不存在", details={"shot_id": shot_id})
-    return shot
+def _load_shot(db, shot_id: str):
+    """保留旧直接调用入口，镜头查询与错误映射由制作模块拥有。"""
+    return production_module.get_shot(db, shot_id)

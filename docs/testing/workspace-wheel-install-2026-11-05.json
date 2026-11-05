@@ -14,5 +14,6 @@
   ],
   "export_bytes": 70043,
   "occupied_port_rejected": true,
-  "mode": "mock; non-editable wheels; isolated temporary database/storage; no standalone web server"
+  "mode": "mock; non-editable wheels; isolated temporary database/storage; no standalone web server",
+  "source_commit": "0a2060d"
 }

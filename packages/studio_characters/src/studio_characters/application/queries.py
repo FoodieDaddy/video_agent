@@ -20,8 +20,17 @@ from studio_characters.contracts import (
 )
 from studio_characters.infrastructure.persistence import queries as repository
 from studio_characters.infrastructure.persistence.models import Character, CharacterProfile
+from studio_platform.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+def get_character(db: Session, character_id: str) -> Character:
+    """按 ID 读取人物兼容实体，不刷新缓存；调用方随后核对项目访问权限。"""
+    character = db.get(Character, character_id)
+    if character is None:
+        raise NotFoundError("人物不存在", details={"character_id": character_id})
+    return character
 
 
 def find_character_reference(db: Session, project_id: str, character_id: str) -> CharacterReference | None:

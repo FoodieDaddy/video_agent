@@ -161,6 +161,14 @@ def get_review(db: Session, project_id: str, review_id: str) -> Review:
     return review
 
 
+def get_review_by_id(db: Session, review_id: str) -> Review:
+    """按 ID 读取审核兼容实体；调用方随后检查项目访问，不刷新或提交。"""
+    review = db.get(Review, review_id)
+    if review is None:
+        raise NotFoundError("审核记录不存在", details={"review_id": review_id})
+    return review
+
+
 def add_comment(db: Session, review: Review, *, user_id: str, body: str) -> ReviewComment:
     """为审核追加非空意见，返回 ReviewComment。
 

@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from studio_platform.configuration.settings import Settings, get_settings
@@ -86,6 +86,12 @@ def session_scope() -> Iterator[Session]:
 def get_db() -> Iterator[Session]:
     with session_scope() as session:
         yield session
+
+
+def check_database_connection() -> None:
+    """使用原会话工厂执行健康探针，数据库异常按既有 HTTP 行为向外传播。"""
+    with session_scope() as db:
+        db.execute(text("SELECT 1"))
 
 
 def reset_engine() -> None:

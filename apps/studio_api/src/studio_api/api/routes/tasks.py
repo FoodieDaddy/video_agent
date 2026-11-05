@@ -9,9 +9,9 @@ from typing import Any
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
-from app.models.ops import Task
 from studio_api.api.deps import RuntimeDep, SessionDep, UserDep, project_scope
 from studio_platform.persistence.session import session_scope
+from studio_platform.public import find_task_reference, task_project_id
 from studio_workflow.public import tasks as task_service
 
 router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["tasks"])
@@ -107,7 +107,7 @@ def _event_stream(task_id: str, after: str, timeout: float) -> Iterator[str]:
         finished = False
         with session_scope() as session:
             events = task_service.task_events(session, task_id, after=cursor, limit=200)
-            task = session.get(Task, task_id)
+            task = find_task_reference(session, task_id)
             finished = task is not None and task.status in TERMINAL_STATUSES
         if events:
             for event in events:
@@ -129,9 +129,4 @@ def _event_stream(task_id: str, after: str, timeout: float) -> Iterator[str]:
 
 def project_id_of(db, task_id: str) -> str:
     """Resolve a task's project so the usual isolation check can run."""
-    from studio_platform.exceptions import NotFoundError
-
-    task = db.get(Task, task_id)
-    if task is None:
-        raise NotFoundError("任务不存在", details={"task_id": task_id})
-    return task.project_id
+    return task_project_id(db, task_id)

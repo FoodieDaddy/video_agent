@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-05",
+  "purpose": "阶段4 HTTP适配器收束后完整OpenAPI精确对照",
+  "baseline_commit": "0a2060d5196f257579f9f707f67c7b5f96b97251",
+  "current_head": "0a2060d5196f257579f9f707f67c7b5f96b97251",
+  "current_worktree_uncommitted": true,
+  "source_before": {
+    "file_count": 571,
+    "sha256": "4ea5e02523ba0ca0d2f39f328ecb94045f93cc7674de2177ca6647d3572668dd"
+  },
+  "source_after": {
+    "file_count": 571,
+    "sha256": "4ea5e02523ba0ca0d2f39f328ecb94045f93cc7674de2177ca6647d3572668dd"
+  },
+  "source_stable_during_capture": true,
+  "comparison": {
+    "exactly_identical": true,
+    "normalization": "无；逐项比较完整JSON，未忽略任何字段或组件名",
+    "baseline_path_count": 71,
+    "current_path_count": 71,
+    "baseline_component_count": 20,
+    "current_component_count": 20,
+    "baseline_sha256": "a5d1f11ddc752fafd698198f6d3befc9dab99941f2c8db8dcc514e812a09d41e",
+    "current_sha256": "a5d1f11ddc752fafd698198f6d3befc9dab99941f2c8db8dcc514e812a09d41e",
+    "differences": []
+  },
+  "isolation": {
+    "python": "Python 3.12.13",
+    "baseline": "git archive 的13个workspace成员src优先，验证全部已加载studio_模块来源",
+    "current": "当前已安装workspace，临时工作目录，无PYTHONPATH覆盖；验证全部已加载studio_模块来源",
+    "baseline_loaded_canonical_modules": 155,
+    "current_loaded_canonical_modules": 156,
+    "canonical_sources_verified": true,
+    "app_env": "test",
+    "provider": "mock",
+    "env_file": "存在的空临时APP_ENV_FILE",
+    "data": "临时隔离目录，已删除",
+    "lifespan_started": false,
+    "socket_connect_and_bind_forbidden": true,
+    "socket_calls": 0,
+    "database_created": false
+  },
+  "runtime_contract_regressions": {
+    "command": ".venv/bin/python -m pytest backend/tests/test_api_owned_queries.py",
+    "result": "13 passed, 1 third-party TestClient deprecation warning",
+    "covered": [
+      "缺失实体的404及details优先于项目授权",
+      "现有实体跨用户访问403",
+      "导演/分镜/剪辑版本降序及项目过滤",
+      "任务事件先回放再输出终态marker",
+      "轮询时任务已删除仍沿用超时语义"
+    ]
+  },
+  "limitations": [
+    "OpenAPI描述请求/响应文档契约，不替代全部动态响应与业务行为回归",
+    "本对照不重复模型元数据、wheel安装或完整影片流程验收"
+  ],
+  "passed": true
+}

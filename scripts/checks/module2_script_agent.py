@@ -70,13 +70,17 @@ import httpx  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 
-from app.models.ops import AgentRun, ModelCallLog  # noqa: E402
-from app.models.project import Project  # noqa: E402
-from app.models.story import Script, StoryEvent  # noqa: E402
 from studio_ai_runtime.base import AgentContext  # noqa: E402
 from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
 from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
 from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_api.bootstrap.model_catalog import (  # noqa: E402  # noqa: E402
+    AgentRun,
+    ModelCallLog,
+    Project,  # noqa: E402
+    Script,
+    StoryEvent,
+)
 from studio_platform.configuration.config_store import stable_checksum  # noqa: E402
 from studio_platform.configuration.settings import Settings, load_settings  # noqa: E402
 from studio_platform.execution.runtime import AppRuntime, build_runtime  # noqa: E402

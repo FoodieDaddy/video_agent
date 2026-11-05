@@ -46,9 +46,8 @@ def create_project(
         genre=payload.genre,
         budget_limit_usd=payload.budget_limit_usd,
         settings={**payload.settings, "aspect_ratio": payload.aspect_ratio},
+        aspect_ratio=payload.aspect_ratio,
     )
-    project.aspect_ratio = payload.aspect_ratio
-    db.flush()
     return project_public(project)
 
 
@@ -65,13 +64,9 @@ def update_project(
     user: UserDep,
 ) -> dict[str, Any]:
     project = owner_project(db, project_id, user)
-    data = payload.model_dump(exclude_unset=True)
-    if "settings" in data and data["settings"] is not None:
-        project.settings = {**(project.settings or {}), **data.pop("settings")}
-    for field in ("name", "description", "aspect_ratio", "budget_limit_usd"):
-        if data.get(field) is not None:
-            setattr(project, field, data[field])
-    db.flush()
+    project = project_service.update_project_details(
+        db, project_id=project.id, **payload.model_dump(exclude_unset=True)
+    )
     return project_public(project)
 
 

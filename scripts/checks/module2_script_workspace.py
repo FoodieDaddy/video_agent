@@ -31,7 +31,7 @@ from module2_script_agent import (  # noqa: E402
 )
 from sqlalchemy import select  # noqa: E402
 
-from app.models.ops import AgentRun, ModelCallLog  # noqa: E402
+from studio_api.bootstrap.model_catalog import AgentRun, ModelCallLog  # noqa: E402
 from studio_platform.exceptions import ConflictError, NotFoundError, ValidationAppError  # noqa: E402
 from studio_platform.execution.task_runner import reset_runner  # noqa: E402
 from studio_platform.persistence.session import reset_engine, session_scope  # noqa: E402

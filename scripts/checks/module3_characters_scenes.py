@@ -54,24 +54,30 @@ import httpx  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 
-from app.models.character import Character, CharacterProfile, CharacterRelationship  # noqa: E402
-from app.models.ops import AgentRun, ModelCallLog, Review  # noqa: E402
-from app.models.production import (  # noqa: E402
-    AudioTrack,
-    DirectingPlan,
-    EditingProject,
-    Shot,
-    Storyboard,
-    VideoGeneration,
-)
-from app.models.project import Asset, Project  # noqa: E402
-from app.models.scene import Scene, SceneProfile  # noqa: E402
-from app.models.story import StoryEvent  # noqa: E402
 from studio_ai_runtime.base import AgentContext  # noqa: E402
 from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
 from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
 from studio_ai_runtime.public import execution as agent_runner  # noqa: E402
 from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_api.bootstrap.model_catalog import (  # noqa: E402  # noqa: E402  # noqa: E402  # noqa: E402  # noqa: E402
+    AgentRun,
+    Asset,
+    AudioTrack,
+    Character,
+    CharacterProfile,
+    CharacterRelationship,
+    DirectingPlan,
+    EditingProject,
+    ModelCallLog,
+    Project,
+    Review,
+    Scene,
+    SceneProfile,
+    Shot,
+    Storyboard,
+    StoryEvent,  # noqa: E402
+    VideoGeneration,
+)
 from studio_characters import public as character_module  # noqa: E402
 from studio_characters.contracts import (  # noqa: E402
     CharacterDescriptionInput,

@@ -11,9 +11,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.project import Asset, Project
+from studio_assets.contracts import LegacyAssetRecord as Asset
 from studio_assets.public import asset_public
 from studio_production import public as production_module
+from studio_projects.contracts import ProjectRecord as Project
 from studio_reviews import public as reviews
 from studio_workflow import public as workflow
 from studio_workflow.public import tasks

@@ -6,6 +6,16 @@
 from importlib import import_module
 
 _EXPORTS = {
+    "script_reference": ("studio_story.application.views", "script_reference"),
+    "document_reference": ("studio_story.application.views", "document_reference"),
+    "script_detail": ("studio_story.application.views", "script_detail"),
+    "latest_script_detail": ("studio_story.application.views", "latest_script_detail"),
+    "script_version_summaries": ("studio_story.application.views", "script_version_summaries"),
+    "validate_script_assist": ("studio_story.application.commands", "validate_script_assist"),
+    "patch_script_result": ("studio_story.application.commands", "patch_script_result"),
+    "create_script_result": ("studio_story.application.commands", "create_script_result"),
+    "import_script_result": ("studio_story.application.commands", "import_script_result"),
+    "restore_script_result": ("studio_story.application.commands", "restore_script_result"),
     "latest_script_snapshot": ("studio_story.application.queries", "latest_script_snapshot"),
     "get_script_snapshot": ("studio_story.application.queries", "get_script_snapshot"),
     "assert_script_baseline_snapshot": (

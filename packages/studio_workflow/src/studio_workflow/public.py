@@ -28,9 +28,10 @@ from studio_workflow.application.handlers import (
     handler_names,
     require_handler,
 )
-from studio_workflow.application.review_queries import workflow_review_reference
+from studio_workflow.application.review_queries import find_run_reference, workflow_review_reference
 
 __all__ = [
+    "find_run_reference",
     "workflow_review_reference",
     "WorkflowEngine",
     "get_run",

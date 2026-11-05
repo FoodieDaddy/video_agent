@@ -16,14 +16,17 @@ import os
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-
-from app.core.constants import ReviewStatus  # noqa: E402
-from app.core.settings import load_settings  # noqa: E402
-from app.db.session import init_engine, init_schema, session_scope  # noqa: E402
-from app.models.ops import Review  # noqa: E402
-from app.services import documents, media, pipeline, projects, quality, reviews, workflow  # noqa: E402
-from app.services.runtime import build_runtime  # noqa: E402
+from studio_characters import public as characters
+from studio_platform.configuration.settings import load_settings
+from studio_platform.constants import ReviewStatus
+from studio_platform.execution.runtime import build_runtime
+from studio_platform.persistence.session import init_engine, init_schema, session_scope
+from studio_production import public as production
+from studio_projects import public as projects
+from studio_reviews import public as reviews
+from studio_scenes import public as scenes
+from studio_story import public as story
+from studio_workflow import public as workflow
 
 
 async def main() -> int:
@@ -48,7 +51,7 @@ async def main() -> int:
             description="离线冒烟测试项目",
             genre="悬疑",
         )
-        document = documents.ingest_sample(db, runtime, project=project, user_id="user_demo")
+        document = story.ingest_sample(db, runtime, project=project, user_id="user_demo")
         print(f"document: {document.filename} -> {document.meta.get('chapter_count')} chapters")
 
         engine = workflow.WorkflowEngine(runtime)
@@ -56,7 +59,7 @@ async def main() -> int:
         gates = 0
         while run.status == "awaiting_review":
             gates += 1
-            review = db.get(Review, run.pending_review_id)
+            review = reviews.get_review(db, project.id, run.pending_review_id)
             print(f"gate {gates}: {review.stage} -> approve")
             reviews.decide(
                 db,
@@ -71,20 +74,24 @@ async def main() -> int:
 
         print(f"workflow status: {run.status} error={run.error or '-'}")
 
-        script = pipeline.latest_script(db, project.id)
-        board = pipeline.latest_board(db, project.id)
-        shots = pipeline.list_shots(db, project.id)
-        editing = media.latest_editing(db, project.id)
-        evaluation = quality.latest_evaluation(db, project.id)
+        script = story.latest_script_snapshot(db, project.id)
+        board = production.latest_board(db, project.id)
+        shots = production.list_shots(db, project.id)
+        editing = production.latest_editing(db, project.id)
+        evaluation = production.latest_evaluation(db, project.id)
         print(f"script    : v{script.version if script else 0} {script.title if script else ''}")
-        print(f"characters: {[c.name for c in pipeline.list_characters(db, project.id)]}")
-        print(f"scenes    : {[s.name for s in pipeline.list_scenes(db, project.id)]}")
+        print(f"characters: {[c.name for c in characters.list_character_snapshots(db, project.id)]}")
+        print(f"scenes    : {[s.name for s in scenes.list_scene_snapshots(db, project.id)]}")
         print(f"storyboard: v{board.version if board else 0} shots={len(shots)}")
         print(f"shot status: {sorted({shot.status for shot in shots})}")
         print(f"videos    : {sum(1 for shot in shots if shot.selected_video_id)}/{len(shots)}")
-        print(f"audio     : {len(media.audio_tracks(db, project.id))} tracks")
-        print(f"editing   : {editing.status if editing else '-'} dur={editing.duration_seconds if editing else 0}")
-        print(f"evaluation: {evaluation.overall_score if evaluation else '-'} {evaluation.recommendation if evaluation else ''}")
+        print(f"audio     : {len(production.audio_tracks(db, project.id))} tracks")
+        print(
+            f"editing   : {editing.status if editing else '-'} dur={editing.duration_seconds if editing else 0}"
+        )
+        print(
+            f"evaluation: {evaluation.overall_score if evaluation else '-'} {evaluation.recommendation if evaluation else ''}"
+        )
         print(f"project   : {project.status} spent=${project.spent_usd:.4f}")
         if evaluation is not None:
             print(f"metrics   : {evaluation.report.get('metrics')}")

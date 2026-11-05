@@ -3,7 +3,16 @@
 from sqlalchemy.orm import Session
 
 from studio_reviews.contracts import WorkflowReviewReference, WorkflowScriptBaseline
+from studio_workflow.contracts import WorkflowRunReference
 from studio_workflow.infrastructure.persistence.models import WorkflowRun
+
+
+def find_run_reference(db: Session, run_id: str) -> WorkflowRunReference | None:
+    """审批完成后读取运行当前状态；不存在返回 None，不刷新或筛选状态。"""
+    run = db.get(WorkflowRun, run_id)
+    if run is None:
+        return None
+    return WorkflowRunReference(id=run.id, project_id=run.project_id, status=run.status)
 
 
 def workflow_review_reference(db: Session, run_id: str, project_id: str) -> WorkflowReviewReference | None:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from studio_contracts.public import ProjectIdentity, json_safe
 from studio_platform.constants import TaskStatus
+from studio_platform.contracts import TaskReference
 from studio_platform.exceptions import NotFoundError
 from studio_platform.ids import new_id
 from studio_platform.persistence.models import Task, TaskEvent
@@ -74,6 +75,22 @@ def get_task(db: Session, project_id: str, task_id: str) -> Task:
     if task is None or task.project_id != project_id:
         raise NotFoundError("任务不存在", details={"task_id": task_id})
     return task
+
+
+def find_task_reference(db: Session, task_id: str) -> TaskReference | None:
+    """按 ID 读取任务身份和状态，不刷新缓存；删除后返回 None，供事件流轮询。"""
+    task = db.get(Task, task_id)
+    if task is None:
+        return None
+    return TaskReference(id=task.id, project_id=task.project_id, status=task.status)
+
+
+def task_project_id(db: Session, task_id: str) -> str:
+    """解析任务所属项目，保留 API 先读取身份再检查项目访问的错误语义。"""
+    task = db.get(Task, task_id)
+    if task is None:
+        raise NotFoundError("任务不存在", details={"task_id": task_id})
+    return task.project_id
 
 
 def list_tasks(db: Session, project_id: str, *, limit: int = 50) -> list[Task]:

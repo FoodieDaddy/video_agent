@@ -16,9 +16,11 @@ from studio_characters.public import list_character_snapshots
 from studio_platform.exceptions import ConflictError, NotFoundError
 from studio_production.infrastructure.persistence.models import (
     DirectingPlan,
+    EditingProject,
     Shot,
     ShotCharacter,
     Storyboard,
+    VideoGeneration,
 )
 from studio_projects.contracts import ProjectContext as Project
 from studio_scenes.public import list_scene_snapshots
@@ -27,6 +29,53 @@ from studio_story.public import assert_script_baseline_reference, latest_script_
 from .fingerprints import shot_edit_fingerprint
 
 logger = logging.getLogger(__name__)
+
+
+def list_directing_plans(db: Session, project_id: str) -> list[DirectingPlan]:
+    """版本降序读取项目导演计划，不刷新缓存或筛选批准状态；调用方授权。"""
+    return list(
+        db.scalars(
+            select(DirectingPlan)
+            .where(DirectingPlan.project_id == project_id)
+            .order_by(DirectingPlan.version.desc())
+        )
+    )
+
+
+def list_storyboards(db: Session, project_id: str) -> list[Storyboard]:
+    """版本降序读取项目全部分镜，保留 HTTP 历史列表的读取与排序语义。"""
+    return list(
+        db.scalars(
+            select(Storyboard).where(Storyboard.project_id == project_id).order_by(Storyboard.version.desc())
+        )
+    )
+
+
+def list_editing_versions(db: Session, project_id: str) -> list[EditingProject]:
+    """版本降序读取剪辑工程；不改变 latest_editing 的独立查询次序。"""
+    return list(
+        db.scalars(
+            select(EditingProject)
+            .where(EditingProject.project_id == project_id)
+            .order_by(EditingProject.version.desc())
+        )
+    )
+
+
+def get_shot(db: Session, shot_id: str) -> Shot:
+    """按 ID 读取镜头兼容实体，不刷新缓存；调用方核对项目权限。"""
+    shot = db.get(Shot, shot_id)
+    if shot is None:
+        raise NotFoundError("镜头不存在", details={"shot_id": shot_id})
+    return shot
+
+
+def get_video_generation(db: Session, video_id: str) -> VideoGeneration:
+    """读取指定视频版本；镜头与项目归属仍由选择用例按既有顺序核对。"""
+    generation = db.get(VideoGeneration, video_id)
+    if generation is None:
+        raise NotFoundError("视频版本不存在", details={"video_id": video_id})
+    return generation
 
 
 def latest_plan(db: Session, project_id: str) -> DirectingPlan | None:

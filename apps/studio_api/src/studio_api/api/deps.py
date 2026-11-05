@@ -12,12 +12,12 @@ from typing import Annotated, Any
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.models.project import Project
 from studio_platform.exceptions import NotFoundError
 from studio_platform.persistence.session import get_db
 from studio_platform.public import AppRuntime, get_runtime
 from studio_platform.security import CurrentUser, get_admin_user, get_current_user
 from studio_projects import public as project_service
+from studio_projects.contracts import ProjectRecord as Project
 from studio_workflow.public import tasks as task_service
 
 SessionDep = Annotated[Session, Depends(get_db)]

@@ -6,10 +6,8 @@ import mimetypes
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, Response
-from sqlalchemy import text
 
-from studio_platform.persistence.session import session_scope
-from studio_platform.public import Settings
+from studio_platform.public import Settings, check_database_connection
 from studio_platform.storage import LocalStorage, StorageError
 
 
@@ -18,8 +16,7 @@ def build_system_router(settings: Settings) -> APIRouter:
 
     @router.get("/health")
     def health() -> dict:
-        with session_scope() as db:
-            db.execute(text("SELECT 1"))
+        check_database_connection()
         return {
             "status": "ok",
             "app": settings.app_name,

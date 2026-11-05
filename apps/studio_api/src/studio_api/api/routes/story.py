@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Query, UploadFile, status
-from sqlalchemy import select
 
-from app.models.story import Script, SourceDocument, StoryEvent
 from studio_api.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from studio_api.api.schemas import (
     ScriptAssistRequest,
@@ -15,8 +13,9 @@ from studio_api.api.schemas import (
     ScriptUpdate,
     ScriptVersionCreate,
 )
-from studio_platform.exceptions import ConflictError, NotFoundError, ValidationAppError
+from studio_platform.exceptions import NotFoundError, ValidationAppError
 from studio_story import public as story_module
+from studio_story.contracts import StoryRecordReference
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_SCRIPT_IMPORT_BYTES = 2 * 1024 * 1024
@@ -88,9 +87,7 @@ async def parse_document(
     wait: bool = Query(default=False),
 ) -> dict[str, Any]:
     project = owner_project(db, project_id, user)
-    document = db.get(SourceDocument, document_id)
-    if document is None or document.project_id != project.id:
-        raise NotFoundError("文档不存在", details={"document_id": document_id})
+    document = story_module.document_reference(db, project.id, document_id)
     return await run_task(
         db,
         runtime,
@@ -118,32 +115,17 @@ async def analyze_project(
 @router.get("/projects/{project_id}/script")
 def latest_script(db: SessionDep, project_id: str, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    script = story_module.latest_script(db, project.id)
+    script = story_module.latest_script_detail(db, project.id)
     if script is None:
         raise NotFoundError("该项目还没有剧本", details={"project_id": project.id})
-    return _script_public(db, script)
+    return script
 
 
 @router.get("/projects/{project_id}/scripts")
 def list_scripts(project_id: str, db: SessionDep, user: UserDep) -> dict[str, Any]:
     project = project_scope(db, project_id, user)
-    rows = story_module.list_script_versions(db, project.id)
-    return {
-        "items": [
-            {
-                "id": row.id,
-                "version": row.version,
-                "status": row.status,
-                "title": row.title,
-                "logline": row.logline,
-                "approved": row.approved,
-                "workspace_meta": (row.content or {}).get("workspace_meta", {}),
-                "created_at": row.created_at.isoformat() if row.created_at else None,
-            }
-            for row in rows
-        ],
-        "count": len(rows),
-    }
+    rows = story_module.script_version_summaries(db, project.id)
+    return {"items": rows, "count": len(rows)}
 
 
 @router.post("/projects/{project_id}/scripts", status_code=status.HTTP_201_CREATED)
@@ -152,8 +134,7 @@ def create_script_version(
 ) -> dict[str, Any]:
     """手动新建或另存全文版本；基线冲突返回409，调用方会话统一提交。"""
     project = owner_project(db, project_id, user)
-    script = story_module.create_script_version(db, project=project, user_id=user.id, **payload.model_dump())
-    return _script_public(db, script)
+    return story_module.create_script_result(db, project=project, user_id=user.id, **payload.model_dump())
 
 
 @router.post("/projects/{project_id}/scripts/import", status_code=status.HTTP_201_CREATED)
@@ -170,7 +151,7 @@ async def import_script_version(
     content = await file.read(MAX_SCRIPT_IMPORT_BYTES + 1)
     if len(content) > MAX_SCRIPT_IMPORT_BYTES:
         raise ValidationAppError("剧本文件超过2MiB上限")
-    script = story_module.import_script_version(
+    return story_module.import_script_result(
         db,
         project=project,
         filename=file.filename or "script.txt",
@@ -178,7 +159,6 @@ async def import_script_version(
         base_script_id=base_script_id or None,
         user_id=user.id,
     )
-    return _script_public(db, script)
 
 
 @router.post("/projects/{project_id}/scripts/{script_id}/restore", status_code=status.HTTP_201_CREATED)
@@ -191,14 +171,13 @@ def restore_script_version(
 ) -> dict[str, Any]:
     """复制同项目历史版本为新稿；当前版本已变化时拒绝覆盖。"""
     project = owner_project(db, project_id, user)
-    script = story_module.restore_script_version(
+    return story_module.restore_script_result(
         db,
         project=project,
         script_id=script_id,
         base_script_id=payload.base_script_id,
         user_id=user.id,
     )
-    return _script_public(db, script)
 
 
 @router.post("/projects/{project_id}/scripts/assist", status_code=status.HTTP_202_ACCEPTED)
@@ -212,15 +191,7 @@ async def assist_script(
 ) -> dict[str, Any]:
     """先校验已保存基线，再排队执行润色/续写；HTTP202不等于任务成功。"""
     project = owner_project(db, project_id, user)
-    base = story_module.get_project_script(db, project.id, payload.base_script_id)
-    latest = story_module.latest_script(db, project.id)
-    if latest is None or latest.id != base.id:
-        raise ConflictError(
-            "剧本已更新，请刷新并基于最新版本执行AI操作",
-            details={"base_script_id": base.id, "current_script_id": latest.id if latest else None},
-        )
-    if not story_module.script_text_of(base).strip():
-        raise ValidationAppError("当前版本没有剧本正文，请先填写正文并保存")
+    story_module.validate_script_assist(db, project_id=project.id, base_script_id=payload.base_script_id)
     return await run_task(
         db,
         runtime,
@@ -249,49 +220,12 @@ def update_script(
     script = _load_script(db, script_id)
     # authorization only: editing a script requires owner/editor on the project
     owner_project(db, script.project_id, user)
-    data = payload.model_dump(exclude_unset=True)
-    status_value = data.pop("status", None) or "edited"
-    story_module.update_script(db, script=script, status=status_value, **data)
-    db.flush()
-    return _script_public(db, script)
+    return story_module.patch_script_result(db, script_id=script.id, **payload.model_dump(exclude_unset=True))
 
 
-def _load_script(db, script_id: str) -> Script:
-    script = db.get(Script, script_id)
-    if script is None:
-        raise NotFoundError("剧本不存在", details={"script_id": script_id})
-    return script
+def _load_script(db, script_id: str) -> StoryRecordReference:
+    return story_module.script_reference(db, script_id)
 
 
-def _script_public(db, script: Script) -> dict[str, Any]:
-    payload = story_module.script_payload(script)
-    events = list(
-        db.scalars(
-            select(StoryEvent).where(StoryEvent.script_id == script.id).order_by(StoryEvent.order_index)
-        )
-    )
-    payload.update(
-        {
-            "project_id": script.project_id,
-            "status": script.status,
-            "agent_id": script.agent_id,
-            "model_id": script.model_id,
-            "prompt_version": script.prompt_version,
-            "config_version": script.config_version,
-            "created_at": script.created_at.isoformat() if script.created_at else None,
-            "events": [
-                {
-                    "id": event.id,
-                    "order_index": event.order_index,
-                    "title": event.title,
-                    "description": event.description,
-                    "chapter_index": event.chapter_index,
-                    "location_name": event.location_name,
-                    "character_names": event.character_names or [],
-                    "importance": event.importance,
-                }
-                for event in events
-            ],
-        }
-    )
-    return payload
+def _script_public(db, script: StoryRecordReference) -> dict[str, Any]:
+    return story_module.script_detail(db, script.id)

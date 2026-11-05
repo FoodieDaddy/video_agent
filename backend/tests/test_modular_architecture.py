@@ -407,6 +407,26 @@ def test_cross_module_imports_use_public_or_declared_technical_interfaces():
     assert not violations, "跨模块导入越过公开边界：\n" + "\n".join(violations)
 
 
+def test_http_adapters_do_not_query_or_write_foreign_orm_records():
+    """HTTP 层保留事务和鉴权；实体读取及写入交给所属公开用例。"""
+    violations = []
+    forbidden = {"get", "scalar", "scalars", "query", "execute", "add", "delete", "merge"}
+    for path in sorted((APPLICATION / "api").rglob("*.py")):
+        for reference in import_references(path):
+            if reference.module.startswith("app.models") or ".infrastructure.persistence" in reference.module:
+                violations.append(reference.explain())
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "db"
+                and node.func.attr in forbidden
+            ):
+                violations.append(f"{path.relative_to(ROOT)}:{node.lineno}: db.{node.func.attr}")
+    assert not violations, "HTTP 适配器绕过公开用例：\n" + "\n".join(violations)
+
+
 def test_module_dependencies_form_an_acyclic_graph():
     graph: dict[str, set[str]] = {}
     for path in module_sources():

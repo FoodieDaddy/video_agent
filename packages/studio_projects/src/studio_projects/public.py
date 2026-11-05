@@ -12,6 +12,7 @@ from studio_projects.application.service import (
     invite_member,
     list_projects,
     touch_status,
+    update_project_details,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "get_project",
     "touch_status",
     "invite_member",
+    "update_project_details",
 ]

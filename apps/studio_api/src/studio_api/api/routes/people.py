@@ -6,12 +6,9 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
-from app.models.character import Character
-from app.models.scene import Scene
 from studio_api.api.deps import RuntimeDep, SessionDep, UserDep, owner_project, project_scope, run_task
 from studio_api.api.schemas import CharacterImagesRequest, CharacterUpdate, SceneUpdate
 from studio_characters import public as character_module
-from studio_platform.exceptions import NotFoundError
 from studio_production import public as media
 from studio_reviews import public as reviews
 from studio_scenes import public as scene_module
@@ -157,15 +154,11 @@ def approve_scene(scene_id: str, db: SessionDep, user: UserDep) -> dict[str, Any
     return scene_module.public_scene(db, scene)
 
 
-def _load_character(db, character_id: str) -> Character:
-    character = db.get(Character, character_id)
-    if character is None:
-        raise NotFoundError("人物不存在", details={"character_id": character_id})
-    return character
+def _load_character(db, character_id: str):
+    """保留旧直接调用入口，读取与错误映射由人物模块拥有。"""
+    return character_module.get_character(db, character_id)
 
 
-def _load_scene(db, scene_id: str) -> Scene:
-    scene = db.get(Scene, scene_id)
-    if scene is None:
-        raise NotFoundError("场景不存在", details={"scene_id": scene_id})
-    return scene
+def _load_scene(db, scene_id: str):
+    """保留旧直接调用入口，读取与错误映射由场景模块拥有。"""
+    return scene_module.get_scene(db, scene_id)

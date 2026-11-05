@@ -32,21 +32,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from module2_script_agent import Redactor, SafeStream, _cleanup, build_sandbox, no_network  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
 
-from app.models.character import Character, CharacterAsset, CharacterProfile  # noqa: E402
-from app.models.ops import AgentRun, ModelCallLog, Review, WorkflowRun  # noqa: E402
-from app.models.production import (  # noqa: E402
-    AudioTrack,
-    DirectingPlan,
-    EditingProject,
-    Storyboard,
-    VideoGeneration,
-)
-from app.models.project import Asset  # noqa: E402
-from app.models.scene import Scene, SceneAsset, SceneProfile  # noqa: E402
 from studio_ai_runtime.base import AgentContext  # noqa: E402
 from studio_ai_runtime.providers import registry as provider_registry  # noqa: E402
 from studio_ai_runtime.providers.base import LLMResult  # noqa: E402
 from studio_ai_runtime.registry import create_agent  # noqa: E402
+from studio_api.bootstrap.model_catalog import (  # noqa: E402  # noqa: E402  # noqa: E402  # noqa: E402
+    AgentRun,
+    Asset,  # noqa: E402
+    AudioTrack,
+    Character,
+    CharacterAsset,
+    CharacterProfile,
+    DirectingPlan,
+    EditingProject,
+    ModelCallLog,
+    Review,
+    Scene,
+    SceneAsset,
+    SceneProfile,
+    Storyboard,
+    VideoGeneration,
+    WorkflowRun,
+)
 from studio_platform.configuration.config_models import ModelRef, ProviderConfig  # noqa: E402
 from studio_platform.configuration.config_store import stable_checksum  # noqa: E402
 from studio_platform.exceptions import (  # noqa: E402

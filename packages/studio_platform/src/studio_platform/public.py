@@ -11,9 +11,12 @@ from studio_platform.execution.runtime import (
     set_runtime,
 )
 from studio_platform.ids import new_id, utcnow
+from studio_platform.persistence.session import check_database_connection
+from studio_platform.persistence.task_records import find_task_reference, task_project_id
 from studio_platform.resources import PROJECT_ROOT
 
 __all__ = [
+    "check_database_connection",
     "AgentConfig",
     "AppRuntime",
     "ConfigStore",
@@ -29,4 +32,6 @@ __all__ = [
     "reset_runtime",
     "set_runtime",
     "utcnow",
+    "find_task_reference",
+    "task_project_id",
 ]

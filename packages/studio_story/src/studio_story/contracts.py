@@ -23,6 +23,14 @@ class ScriptBaselineReference:
 
 
 @dataclass(frozen=True, slots=True)
+class StoryRecordReference:
+    """用于适配层完成授权的稳定记录引用，不携带正文或 ORM 状态。"""
+
+    id: str
+    project_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class ScriptSnapshot:
     """一次读取的剧本投影；正文结构为深副本，可独立于数据库会话使用。
 
@@ -52,4 +60,5 @@ __all__ = [
     "ScriptOutput",
     "ScriptSnapshot",
     "StoryEventDraft",
+    "StoryRecordReference",
 ]
