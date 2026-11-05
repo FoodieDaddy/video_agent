@@ -1,6 +1,6 @@
 # 参与开发
 
-本项目采用模块化单体。交流、新增文档和业务注释默认使用中文，公共标识符保持清晰的英文命名。开发前阅读[工程与注释规范](docs/development/engineering-standards.md)和[模块导航](backend/app/modules/README.md)。
+本项目采用模块化单体。交流、新增文档和业务注释默认使用中文，公共标识符保持清晰的英文命名。开发前阅读[工程与注释规范](docs/development/engineering-standards.md)和[当前架构与模块导航](docs/architecture/overview.md)。
 
 ## 开始一项修改
 
@@ -24,7 +24,7 @@ uv run --frozen --extra dev python scripts/checks/quality_gate.py --scope tests
 修改 Python 后可执行以下格式化命令，再重新检查：
 
 ```bash
-uv run --frozen --extra dev ruff format backend scripts/checks
+uv run --frozen --extra dev ruff format apps packages backend/tests scripts/checks
 ```
 
 质量门禁的实际检查范围、离线验证和真实模型验证见[测试说明](docs/testing/README.md)。自动检查默认不调用真实模型，也不需要 `.env` 密钥。模块 1～3 的真实验证是独立操作，会访问 `.env` 配置的供应商；需要真实验证时记录模式、供应商/模型、用例、结果和报告位置，报告不得包含密钥。
@@ -48,4 +48,4 @@ uv run --frozen --extra dev ruff format backend scripts/checks
 
 仓库提供 GitHub Actions 工作流，同时支持 `main` 和 `master`。它只在配置了 GitHub 仓库或镜像时执行；Gitee 托管项目需要在实际 CI 平台安装锁定依赖并调用相同的质量门禁和测试命令，再由仓库管理员设置合并条件。工作流文件存在不代表远程门禁已经启用。
 
-Docker 与 Windows 安装器的完整依赖锁定、数据库迁移和生产身份接入，仍见[工程规范中的后续任务](docs/development/engineering-standards.md#后续行为与交付任务)，不能据本轮规范建设视为已完成生产验收。
+Docker/Windows 原生交付验证、数据库迁移和生产身份接入，仍见[工程规范中的后续任务](docs/development/engineering-standards.md#后续行为与交付任务)，不能据本轮规范建设视为已完成生产验收。

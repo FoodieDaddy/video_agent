@@ -54,7 +54,7 @@ ORM 类定义在各所有者 `infrastructure/persistence`，技术 Task/TaskEven
 
 `ScriptSnapshot`、人物/场景 payload 是与 Session 脱离的深副本；冻结 dataclass 字段并不代表嵌套 JSON 不可修改，也不代表所有读取跨多条查询构成一致数据库快照。剧本校验入口显式刷新并核验指纹，不能用已有 DTO 冒充后续写入时的最新状态。
 
-HTTP、旧服务接口和若干显式 legacy 适配仍接收 Session 或返回 ORM。兼容入口只转发，不复制规则；仓储与 DTO 还没有覆盖每一个存量公共函数。删除旧入口应单独评审消费者和发布兼容策略。
+HTTP 层已经通过模块公开用例和查询访问数据，不再直接执行 SQL、导入内部持久化模型或访问私有 ORM 实现；Session 提交/回滚仍由既有外层管理。显式 legacy 公共接口保留部分 ORM 返回，仓储与 DTO 尚未覆盖每一个历史函数。兼容入口只转发，不复制规则；删除旧入口应单独评审消费者和发布兼容策略。
 
 架构测试扫描真实 canonical 源码，检查业务/技术公开入口、DAG、纯 domain 依赖、旧路径反向依赖及成员直接包依赖声明；惰性 public 导出同样纳入依赖图。安装成员不会自动提供运行时安全隔离。
 
@@ -92,4 +92,6 @@ uv build --all-packages --wheel
 uv run --frozen --extra dev uvicorn studio_api.main:app --host 127.0.0.1 --port 8010 --workers 1
 ```
 
-Docker 与 Windows 安装器已按完整 workspace 和锁文件调整。当前环境 Docker daemon 不可用，容器构建/运行未验收；Windows 原生 EXE 构建、安装、启动与卸载也未执行。mock 媒体与离线检查证明的是机制，真实模型质量、生产鉴权和可靠多实例执行仍需独立验收。
+Docker 与 Windows 安装器已按完整 workspace 和锁文件调整。Linux arm64 镜像构建与容器内四关 mock/FFmpeg 导出已通过（禁外部网络、无主机端口绑定）；Windows 的两个访问上下文均拒绝 SSH 连接，原生 EXE 构建、安装、启动与卸载尚未执行。mock 媒体与离线检查证明的是机制，真实模型质量、生产鉴权和可靠多实例执行仍需独立验收。
+
+当前 HTTP 边界批次已提交为 `1e6b5bc`；完整门禁 5/5 通过，后端 379 项通过。外部平台交付的当前进度与原始检查证据见[重构进度](refactoring-progress.md)。

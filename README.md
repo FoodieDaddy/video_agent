@@ -77,7 +77,7 @@ installer/                       Windows 安装与卸载脚本
 deployment/                    Docker 与 Nginx 参考配置
 ```
 
-从对应 `packages/studio_<业务>/src/studio_<业务>/public.py` 和同目录 README 开始阅读，随后查看 application、domain、infrastructure。跨业务模块通过 public/contracts 协作；技术公开接口、依赖 DAG 和成员直接依赖声明由架构测试检查。HTTP 与旧接口仍保留部分 Session/ORM 契约，完整仓储/DTO 解耦和旧入口删除并未完成。
+从对应 `packages/studio_<业务>/src/studio_<业务>/public.py` 和同目录 README 开始阅读，随后查看 application、domain、infrastructure。跨业务模块通过 public/contracts 协作；技术公开接口、依赖 DAG 和成员直接依赖声明由架构测试检查。HTTP 层已通过公开用例/查询访问数据，不再直接执行 SQL 或导入内部 ORM；外层仍负责 Session 事务，部分显式 legacy 公共接口继续返回 ORM。完整事务解耦和旧入口删除未完成。
 
 ## 资源、wheel 与部署
 
@@ -96,7 +96,7 @@ Dockerfile 已改为复制完整 workspace，并使用共享锁文件冻结安�
 docker compose up --build
 ```
 
-Docker daemon 在本轮环境不可用，因此尚无该版本的容器构建与运行验收。Windows 安装器已按 workspace payload 和锁文件同步依赖改造，原生 Windows 构建、安装、启动、卸载仍需在 Windows 环境验证。不能把跨平台脚本检查当作对应平台已交付。
+Linux arm64 镜像已实际构建成功，并在禁用外部网络的临时容器中通过 TestClient 完成四关 mock、真实 FFmpeg 渲染与导出；未绑定主机端口，未验证对外 TCP/反向代理。证据见 [Docker 验收](docs/testing/docker-workspace-2026-11-06.md)。Windows 安装器已按 workspace payload 和锁文件同步依赖改造，两个现有 Windows 访问上下文的 SSH 均拒绝连接，原生 Windows 构建、安装、启动、卸载仍待环境可用后验证。不能把跨平台脚本检查当作对应平台已交付。
 
 ## 运行边界
 

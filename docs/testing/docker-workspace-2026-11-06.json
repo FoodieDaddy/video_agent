@@ -1,0 +1,48 @@
+{
+  "packages": [
+    "studio-ai-runtime",
+    "studio-api",
+    "studio-assets",
+    "studio-characters",
+    "studio-configuration",
+    "studio-contracts",
+    "studio-platform",
+    "studio-production",
+    "studio-projects",
+    "studio-reviews",
+    "studio-scenes",
+    "studio-story",
+    "studio-workflow"
+  ],
+  "package_count": 13,
+  "tables": 39,
+  "agents": 17,
+  "health_console_meta": true,
+  "review_stages": [
+    "characters_scenes",
+    "storyboard",
+    "shots",
+    "final"
+  ],
+  "workflow": "completed",
+  "export_bytes": 70049,
+  "external_network": "disabled",
+  "mode": "mock + TestClient + container-local data",
+  "host_ports_bound": false,
+  "image_id": "sha256:25ef58b7b57ccc3cdb7c0f8318860fbece0f840277274eac47a1d11326006a6c",
+  "architecture": "arm64",
+  "os": "linux",
+  "image_command": [
+    "uvicorn",
+    "studio_api.main:app",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "8000",
+    "--workers",
+    "1"
+  ],
+  "source_commit": "1e6b5bc",
+  "build": "Dockerfile full build succeeded; pinned uv frozen non-editable installation",
+  "container_removed": true
+}
