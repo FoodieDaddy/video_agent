@@ -2,6 +2,8 @@
 
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -99,3 +101,16 @@ def test_runtime_paths_override_inherited_formal_paths(tmp_path, monkeypatch):
     assert env["DATABASE_URL"] == f"sqlite:///{(root / 'data/studio.db').as_posix()}"
     assert env["STUDIO_RESOURCE_ROOT"] == str(root / "app")
     assert "PYTHONPATH" not in env
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX ps 的 UTF-8 参数显示")
+def test_real_process_identity_preserves_unicode_install_paths(tmp_path):
+    marker = str(tmp_path / "测试安装 带空格")
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)", marker])
+    try:
+        identity = launcher.process_identity(process.pid)
+        assert identity is not None
+        assert marker in identity[1]
+    finally:
+        process.terminate()
+        process.wait(timeout=5)

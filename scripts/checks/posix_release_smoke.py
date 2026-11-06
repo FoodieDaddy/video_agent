@@ -468,6 +468,12 @@ def run(archive: Path, port: int, report_path: Path) -> int:
     except (CheckFailure, OSError, ValueError, KeyError, tarfile.TarError, subprocess.SubprocessError) as exc:
         report["error"] = redacted_tail(str(exc), temporary)
     finally:
+        if report["result"] != "passed" and root is not None:
+            log_path = root / "run" / "studio.log"
+            if log_path.is_file():
+                report["startup_log_tail"] = redacted_tail(
+                    log_path.read_text(encoding="utf-8", errors="replace"), temporary
+                )
         if root is not None and env is not None and (root / "install.json").is_file():
             try:
                 if observed_process(root) is not None:

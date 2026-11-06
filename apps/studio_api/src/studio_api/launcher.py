@@ -127,11 +127,18 @@ def process_identity(pid: int) -> tuple[str, str] | None:
             return None
         record = json.loads(result.stdout)
         return record["start"], record["command"]
+    environment = {
+        **os.environ,
+        "LC_TIME": "C",
+        "LC_CTYPE": "UTF-8" if sys.platform == "darwin" else "C.UTF-8",
+        "TZ": "UTC",
+    }
+    environment.pop("LC_ALL", None)
     result = subprocess.run(
         ["ps", "-ww", "-p", str(pid), "-o", "lstart=", "-o", "command="],
         capture_output=True,
         text=True,
-        env={**os.environ, "LC_ALL": "C", "TZ": "UTC"},
+        env=environment,
     )
     if result.returncode:
         return None
