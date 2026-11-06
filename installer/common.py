@@ -46,6 +46,9 @@ SKIP_NAMES = {
     "installer",
     ".git",
     ".github",
+    ".idea",
+    ".vscode",
+    ".DS_Store",
     ".pytest_cache",
     ".ruff_cache",
     ".mypy_cache",
@@ -210,23 +213,38 @@ def run(
     """Run a command and stream its output so long pip installs stay visible."""
     if echo:
         log(f"  $ {' '.join(str(part) for part in command)}")
-    process = subprocess.run(  # noqa: S603 - arguments are constructed by us
-        [str(part) for part in command],
-        cwd=str(cwd) if cwd else None,
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
-    )
     if echo:
-        for line in (process.stdout or "").splitlines():
-            if line.strip():
-                log(f"    {line}")
-        for line in (process.stderr or "").splitlines():
-            if line.strip():
-                log(f"    {line}")
+        # 下载/构建可能耗时数分钟，实时显示进度；合并两条管道避免互相阻塞。
+        output: list[str] = []
+        with subprocess.Popen(
+            [str(part) for part in command],
+            cwd=str(cwd) if cwd else None,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
+        ) as child:
+            assert child.stdout is not None
+            for line in child.stdout:
+                output.append(line)
+                if line.strip():
+                    log(f"    {line.rstrip()}")
+            process = subprocess.CompletedProcess(command, child.wait(), "".join(output), "")
+    else:
+        process = subprocess.run(
+            [str(part) for part in command],
+            cwd=str(cwd) if cwd else None,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     if check and process.returncode != 0:
         tail = "\n".join(((process.stdout or "") + (process.stderr or "")).splitlines()[-15:])
         raise InstallerError(

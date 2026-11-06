@@ -18,6 +18,7 @@ exists for.  Pass ``--rebuild-python`` to throw the build interpreter away.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -36,14 +37,25 @@ BUILD_READY = BUILD_DIR / "venv-ready.txt"
 BUILD_REQUIREMENTS = ("pyinstaller>=6.6", "pillow>=10")
 
 sys.path.insert(0, str(INSTALLER_DIR))
+sys.path.insert(0, str(REPO_ROOT))
 
 from common import (  # noqa: E402 - the installer package is not importable
     PYTHON_VERSION,
     download,
     log,
     machine_arch,
+    project_metadata,
     python_installer_url,
     run,
+)
+from scripts.build_releases import (  # noqa: E402
+    committed_windows_source_fingerprint,
+    payload_source_manifest,
+    source_snapshot,
+    write_windows_installers_manifest,
+)
+from scripts.build_releases import (  # noqa: E402
+    stage_payload as stage_workspace_payload,
 )
 
 ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
@@ -142,18 +154,17 @@ def paint_icon(path: Path) -> Path:
     return path
 
 
-def stage_payload() -> Path:
+def stage_payload(source_root: Path | None = None) -> Path:
     log(f"staging application files into {PAYLOAD_DIR}")
-    from common import copy_payload, validate_payload
-
-    copy_payload(REPO_ROOT, PAYLOAD_DIR)
-    # Never ship stray screenshots or local secrets from the checkout root.
-    for pattern in ("*.png", "*.log", "*.zip"):
-        for item in PAYLOAD_DIR.glob(pattern):
-            item.unlink(missing_ok=True)
-    # 同步的是载荷副本，不写回用户正在编辑的仓库资源目录。
-    run([sys.executable, str(PAYLOAD_DIR / "scripts" / "sync_studio_resources.py")], cwd=PAYLOAD_DIR)
-    validate_payload(PAYLOAD_DIR)
+    # 默认来源是 HEAD；只有显式参数才允许调用方提供目录当前内容。
+    with source_snapshot(source_root, git_root=REPO_ROOT) as (source, provenance):
+        stage_workspace_payload(source, PAYLOAD_DIR)
+        metadata = payload_source_manifest(PAYLOAD_DIR, provenance)
+    BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    (BUILD_DIR / "windows-payload-source.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     return PAYLOAD_DIR
 
 
@@ -210,6 +221,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="discard build/venv and build/python and bootstrap them again",
     )
+    parser.add_argument(
+        "--source-root",
+        type=Path,
+        help="显式指定内嵌载荷源码目录；缺省使用 Git HEAD 快照，编译安装代码仍须匹配 HEAD",
+    )
     return parser.parse_args(argv)
 
 
@@ -218,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
     if os.name != "nt":
         log("PyInstaller builds Windows executables on Windows only - run this script on Windows.")
         return 2
+
+    source_fingerprint = committed_windows_source_fingerprint(REPO_ROOT)
 
     if is_conda_python() and not Path(sys.executable).resolve().is_relative_to(BUILD_VENV_DIR.resolve()):
         log(f"the current interpreter is conda-based ({sys.version.split()[0]});")
@@ -234,7 +252,14 @@ def main(argv: list[str] | None = None) -> int:
     log(f"repository: {REPO_ROOT}")
     log(f"build python: {sys.version.split()[0]} ({sys.executable})")
     icon = paint_icon(ASSETS_DIR / "studio.ico")
-    stage_payload()
+    # 旧清单不能在本次构建失败后继续冒充新一轮成功产物。
+    (DIST_DIR / "windows-installers.json").unlink(missing_ok=True)
+    stage_payload(args.source_root)
+    payload_source = json.loads((BUILD_DIR / "windows-payload-source.json").read_text(encoding="utf-8"))
+    if payload_source["files_sha256"].get("uv.lock") != source_fingerprint["uv_lock_sha256"]:
+        raise SystemExit("内嵌载荷锁文件与已提交的安装构建输入不一致")
+    if project_metadata(PAYLOAD_DIR)["version"] != source_fingerprint["version"]:
+        raise SystemExit("内嵌载荷版本与已提交的安装构建输入不一致")
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     shutil.rmtree(BUILD_DIR / "spec", ignore_errors=True)
 
@@ -244,10 +269,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     verify(install_exe)
     verify(uninstall_exe)
+    if payload_source_manifest(PAYLOAD_DIR, payload_source) != payload_source:
+        raise SystemExit("Windows 编译期间内嵌载荷发生变化，请重新构建")
+    sidecar = write_windows_installers_manifest(
+        REPO_ROOT,
+        DIST_DIR,
+        payload_source=payload_source,
+        expected_source=source_fingerprint,
+    )
 
     log("")
     for exe in (install_exe, uninstall_exe):
         log(f"  {exe}  ({exe.stat().st_size / 1048576:.1f} MB)")
+    log(f"  {sidecar} (source and executable hashes)")
     log("")
     log("Ship install.exe and uninstall.exe together:")
     log("  install.exe    deploy (downloads Python if needed, installs dependencies, shortcuts)")

@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import common
+import workspace as workspace_engine
 from common import (  # noqa: E402 - after sys.path fiddling so the frozen exe works
     APP_NAME,
     ICON_NAME,
@@ -56,7 +57,7 @@ from common import (  # noqa: E402 - after sys.path fiddling so the frozen exe w
     write_text,
 )
 
-UV_VERSION = "0.12.9"
+UV_VERSION = workspace_engine.UV_VERSION
 
 
 # --------------------------------------------------------------------- launcher
@@ -142,77 +143,17 @@ def install_python(root: Path, *, dry_run: bool) -> str:
 
 
 def dependency_list(meta: dict, extras: list[str]) -> list[str]:
-    available = meta.get("extras", {})
-    unknown = [name for name in extras if name not in available]
-    if unknown:
-        raise InstallerError(
-            f"Unknown extra(s): {', '.join(unknown)}. Available: {', '.join(sorted(available)) or 'none'}"
-        )
-    packages = list(meta.get("dependencies", []))
-    for name in extras:
-        packages.extend(available[name])
-    return packages
+    """兼容 Windows 安装入口的依赖校验。"""
+    return workspace_engine.dependency_list(meta, extras)
 
 
 def install_workspace(venv_python: Path, app_dir: Path, extras: list[str], *, dry_run: bool) -> None:
-    """使用固定 uv 同步完整 workspace；本地成员不会被当成 PyPI 包下载。"""
-    bootstrap = venv_python.parent.parent.parent / "uv-bootstrap"
-    # uv 官方 --target 布局把可执行文件放在目标的 bin/（Windows 同样如此）。
-    uv = bootstrap / "bin" / ("uv.exe" if os.name == "nt" else "uv")
-    # uv 放在 runtime 环境外，避免精确同步清理自身或 Windows 的文件锁冲突。
-    bootstrap_command = [
-        str(venv_python),
-        "-m",
-        "pip",
-        "install",
-        "--disable-pip-version-check",
-        "--no-input",
-        "--upgrade",
-        "--target",
-        str(bootstrap),
-        f"uv=={UV_VERSION}",
-    ]
-    command = [
-        str(uv),
-        "sync",
-        "--frozen",
-        "--no-editable",
-        "--no-dev",
-        "--project",
-        str(app_dir),
-        "--python",
-        str(venv_python),
-    ]
-    for extra in extras:
-        command.extend(["--extra", extra])
-    env = os.environ.copy()
-    env["UV_PROJECT_ENVIRONMENT"] = str(venv_python.parent.parent)
-    log(f"  synchronizing the bundled workspace with uv {UV_VERSION} and uv.lock")
-    if dry_run:
-        log(f"  would bootstrap: {bootstrap_command}")
-        log(f"  would run: {command}")
-        return
-    common.validate_payload(app_dir)
-    run([str(venv_python), str(app_dir / "scripts" / "sync_studio_resources.py")], cwd=app_dir)
-    try:
-        run(bootstrap_command)
-        if not uv.is_file():
-            raise InstallerError(f"Pinned uv bootstrap is missing: {uv}")
-        run(command, cwd=app_dir, env=env)
-    finally:
-        shutil.rmtree(bootstrap, ignore_errors=True)
+    """兼容 Windows 观察点，共用各平台冻结安装引擎。"""
+    workspace_engine.install_workspace(venv_python, app_dir, extras, dry_run=dry_run, runner=run, logger=log)
 
 
 def verify_packages(venv_python: Path) -> None:
-    run(
-        [
-            str(venv_python),
-            "-c",
-            "import fastapi, uvicorn, sqlalchemy, yaml, PIL, docx, pydantic, httpx; "
-            "import studio_api.desktop, studio_story, studio_production, studio_platform; "
-            "print('workspace deps ok')",
-        ]
-    )
+    workspace_engine.verify_packages(venv_python, runner=run)
 
 
 def create_shortcuts(root: Path, *, enabled: bool) -> list[str]:

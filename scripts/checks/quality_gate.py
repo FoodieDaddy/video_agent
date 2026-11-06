@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SCOPES = ("lint", "format", "types", "architecture")
 SCOPES = (*DEFAULT_SCOPES, "tests", "smoke")
-SOURCE_TARGETS = ("apps", "packages", "backend/tests", "scripts/checks")
+SOURCE_TARGETS = ("apps", "packages", "backend/tests", "scripts", "installer")
 
 
 @dataclass(frozen=True)

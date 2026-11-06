@@ -73,13 +73,13 @@ config/                          YAML、提示词、JSON Schema，正式资源�
 web/                             HTML/CSS/JS 控制台，正式资源来源
 samples/                         示例小说，正式资源来源
 scripts/                         门禁、模块检查、资源同步、Schema 导出与安装器构建
-installer/                       Windows 安装与卸载脚本
+installer/                       Windows、macOS、Linux 安装与卸载入口及共享安装引擎
 deployment/                    Docker 与 Nginx 参考配置
 ```
 
 从对应 `packages/studio_<业务>/src/studio_<业务>/public.py` 和同目录 README 开始阅读，随后查看 application、domain、infrastructure。跨业务模块通过 public/contracts 协作；技术公开接口、依赖 DAG 和成员直接依赖声明由架构测试检查。HTTP 层已通过公开用例/查询访问数据，不再直接执行 SQL 或导入内部 ORM；外层仍负责 Session 事务，部分显式 legacy 公共接口继续返回 ORM。完整事务解耦和旧入口删除未完成。
 
-## 资源、wheel 与部署
+## 资源、wheel 与分平台部署
 
 `config/`、`web/`、`samples/` 是资源的编辑来源。构建 wheel 前同步到 `studio-api` 包资源目录：
 
@@ -96,7 +96,28 @@ Dockerfile 已改为复制完整 workspace，并使用共享锁文件冻结安�
 docker compose up --build
 ```
 
-Linux arm64 镜像已实际构建成功，并在禁用外部网络的临时容器中通过 TestClient 完成四关 mock、真实 FFmpeg 渲染与导出；未绑定主机端口，未验证对外 TCP/反向代理。证据见 [Docker 验收](docs/testing/docker-workspace-2026-11-06.md)。Windows 安装器已按 workspace payload 和锁文件同步依赖改造，两个现有 Windows 访问上下文的 SSH 均拒绝连接，原生 Windows 构建、安装、启动、卸载仍待环境可用后验证。不能把跨平台脚本检查当作对应平台已交付。
+Linux arm64 镜像已实际构建成功，并在禁用外部网络的临时容器中通过 TestClient 完成四关 mock、真实 FFmpeg 渲染与导出；未绑定主机端口，未验证对外 TCP/反向代理。证据见 [Docker 验收](docs/testing/docker-workspace-2026-11-06.md)。
+
+### Windows、macOS、Linux 发布包
+
+发布目标按平台分别出包，当前本机实际安装与运行验收使用 macOS。所有平台仍采用同一份应用源码、13 成员 workspace 和 `uv.lock`；平台入口、前置条件及实际验证范围分别记录。
+
+| 目标平台 | 发布形式与入口 | 前置条件 |
+| --- | --- | --- |
+| macOS | `*-macos-source-bootstrap.tar.gz`；`Install.command` 或 `install.sh` | 本机 Python ≥3.11、FFmpeg/ffprobe；安装时需要网络获取固定 uv 和锁定依赖 |
+| Linux | `*-linux-source-bootstrap.tar.gz`；`install.sh` | 本机 Python ≥3.11、FFmpeg/ffprobe；安装时需要网络 |
+| Windows 源码引导包 | `*-windows-source-bootstrap.zip`；`install.cmd` | 本机 Python ≥3.11、FFmpeg/ffprobe；此包不包含原生 EXE |
+| Windows 原生引导包 | `*-windows-native-bootstrap.zip`；`install.exe` / `uninstall.exe` | 在 Windows 构建；EXE 可引导安装 Python，发布器验证 EXE 来源、架构与载荷哈希 |
+
+macOS/Linux 发布包是源码引导归档，应用和依赖在目标机器上安装，不是包含 Python/FFmpeg 的通用二进制应用。分别构建三个源码引导包：
+
+```bash
+uv run --frozen --extra dev python scripts/build_releases.py --platform all --source-only
+```
+
+默认从已提交的 Git HEAD 提取源码，工作区中尚未提交的代码、配置和前端改动不会进入发布。归档输出到 `dist/releases/`，每包的 `release.json` 记录平台、类型、来源提交、锁文件及内容哈希。Windows 原生构建命令和 Mac/Linux 安装生命周期见[操作手册](docs/manual/README.md#29-macoslinux-用户级安装与卸载)。完整 EXE 需要当前构建生成的 `windows-installers.json`，不能把旧版本 EXE 混入新源码包。
+
+本轮实际验证以 macOS 本机为主，不再等待远程 Windows 机器。Windows 原生 EXE 构建、快捷方式、注册表、安装和卸载的结果仍由对应 Windows CI 或原生环境单独报告；源码归档构建和跨平台脚本测试不代替原生执行。macOS 本机完整安装、启动、停止及卸载的最终记录见[重构进度](docs/architecture/refactoring-progress.md)。
 
 ## 运行边界
 

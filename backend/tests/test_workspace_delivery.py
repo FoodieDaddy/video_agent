@@ -37,7 +37,14 @@ def workspace(tmp_path: Path) -> Path:
 
 def test_payload_keeps_every_member_and_resource_but_drops_local_state(tmp_path):
     root = workspace(tmp_path)
-    for name in (".env", "packages/studio_story/.env", "data/studio.db", "build/noise.py"):
+    for name in (
+        ".env",
+        "packages/studio_story/.env",
+        "data/studio.db",
+        "build/noise.py",
+        ".idea/workspace.xml",
+        ".vscode/settings.json",
+    ):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("private fixture")
@@ -60,6 +67,8 @@ def test_payload_keeps_every_member_and_resource_but_drops_local_state(tmp_path)
     assert not list(target.rglob(".env"))
     assert not (target / "data").exists()
     assert not (target / "build").exists()
+    assert not (target / ".idea").exists()
+    assert not (target / ".vscode").exists()
 
 
 @pytest.mark.parametrize(
@@ -78,6 +87,9 @@ def test_installer_uses_frozen_local_workspace_and_cleans_bootstrap(tmp_path, mo
     root = workspace(tmp_path)
     python = tmp_path / "installation" / "venv" / "bin" / "python"
     calls = []
+    unrelated = python.parent.parent.parent / "uv-bootstrap"
+    unrelated.mkdir(parents=True)
+    (unrelated / "sentinel").write_text("unowned directory")
 
     def run(command, **kwargs):
         calls.append((command, kwargs))
@@ -103,7 +115,9 @@ def test_installer_uses_frozen_local_workspace_and_cleans_bootstrap(tmp_path, mo
     assert command[-4:] == ["--extra", "s3", "--extra", "pdf"]
     assert kwargs["cwd"] == root
     assert kwargs["env"]["UV_PROJECT_ENVIRONMENT"] == str(python.parent.parent)
-    assert not (python.parent.parent.parent / "uv-bootstrap").exists()
+    bootstrap = Path(calls[1][0][calls[1][0].index("--target") + 1])
+    assert not bootstrap.exists()
+    assert (unrelated / "sentinel").read_text() == "unowned directory"
     assert "studio-api" not in calls[1][0]
 
 

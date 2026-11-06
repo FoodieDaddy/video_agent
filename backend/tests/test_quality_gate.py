@@ -40,7 +40,8 @@ def test_gate_selects_defaults_and_deduplicates_full_test_scope(gate):
         "apps",
         "packages",
         "backend/tests",
-        "scripts/checks",
+        "scripts",
+        "installer",
     )
     assert "--check" in commands["format"]
     assert commands["types"] == ("python-test", "-m", "mypy", "--config-file", "pyproject.toml")

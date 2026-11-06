@@ -54,13 +54,13 @@ ffprobe -version
 
 | 文件 | 作用 |
 | --- | --- |
-| `install.exe` | 一键部署：本机没有 Python 3.11+ 时自动下载并安装一份私有副本，自动 `pip` 安装依赖，写启动脚本、桌面/开始菜单快捷方式，并在注册表登记卸载项 |
+| `install.exe` | 一键部署：本机没有 Python 3.11+ 时自动下载并安装一份私有副本，使用固定 uv 与锁文件安装应用依赖，写启动脚本、桌面/开始菜单快捷方式，并在注册表登记卸载项 |
 | `uninstall.exe` | 卸载：停掉正在运行的服务，删除快捷方式、注册表项、虚拟环境与应用文件；默认**保留**用户数据，加 `--purge` 才连数据一起删 |
 
 操作步骤：
 
 1. 把 `install.exe` 与 `uninstall.exe` 放在同一个文件夹（`install.exe` 会把同目录的卸载程序复制进安装目录）。
-2. 双击 `install.exe`，等它跑完（首次约 2～5 分钟，取决于网速），成功后浏览器会自动打开控制台。
+2. 双击 `install.exe`，等待安装日志完成；首次需要下载 Python（如缺失）、uv 和锁定依赖，耗时取决于网络。成功后浏览器会自动打开控制台。
 3. 之后从桌面快捷方式 **AI Film Studio** 启动；关闭控制台窗口或按 `Ctrl+C` 即停止。
 4. 卸载：`开始菜单 → AI Film Studio → Uninstall AI Film Studio`，或 `设置 → 应用 → AI Film Studio`，
    或直接双击安装目录里的 `uninstall.exe`（需要输入 `YES` 确认）。
@@ -69,7 +69,7 @@ ffprobe -version
 
 ```
 %LOCALAPPDATA%\AIFilmStudio\
-  app\               应用（backend + web + config）
+  app\               应用 workspace（apps + packages + web + config + uv.lock）
   venv\              独立虚拟环境，依赖都装在这里
   python\            仅当本机没有 3.11+ 时才会出现的私有 Python 副本
   data\              SQLite 数据库、上传、生成媒体（卸载时保留）
@@ -114,8 +114,8 @@ Copy-Item .env.example .env           # 可选，.env 会被自动读取；不�
 也可以用桌面启动器：启动前先确认没有已有项目实例，等 `/health` 通了再打开浏览器：
 
 ```powershell
-.\.venv\Scripts\python.exe backend\app\desktop.py --port 8010
-.\.venv\Scripts\python.exe backend\app\desktop.py --port 8010 --no-browser   # 只起服务
+.\.venv\Scripts\python.exe -m studio_api.desktop --port 8010
+.\.venv\Scripts\python.exe -m studio_api.desktop --port 8010 --no-browser   # 只起服务
 ```
 
 - 停止：在该终端按 `Ctrl+C`。
@@ -184,6 +184,75 @@ docker compose down -v             # 停止并清空数据库与生成媒体
 | `data/storage/` | 生成资产：人物图、镜头视频、配音、字幕、成片、导出 |
 | `config/` | 应用/智能体/provider/工作流/prompt/schema 配置 |
 | `samples/novel_sample.txt` | 「导入示例」使用的样例小说 |
+
+### 2.9 macOS/Linux 用户级安装与卸载
+
+这两个平台使用各自的源码引导归档：macOS 为 `*-macos-source-bootstrap.tar.gz`，Linux 为 `*-linux-source-bootstrap.tar.gz`。归档不包含 Python 或 FFmpeg，安装前需要可运行的 Python 3.11+、`ffmpeg` 和 `ffprobe`；安装过程会获取固定 uv 0.12.9，再使用归档的 `uv.lock` 冻结安装全部 workspace 成员。
+
+解压后，macOS 可双击 `Install.command`，或在终端执行 `./install.sh`。Linux 执行 `./install.sh`。脚本会依次寻找可用的 Python；如需明确指定，设置 `STUDIO_PYTHON` 为解释器路径。安装目录包含空格时使用引号：
+
+```bash
+./install.sh --dir "$HOME/Library/Application Support/AI Film Studio" --no-shortcuts
+```
+
+默认目录及内容：
+
+| 平台 | 默认安装目录 |
+| --- | --- |
+| macOS | `~/Library/Application Support/AI Film Studio` |
+| Linux | `$XDG_DATA_HOME/ai-film-studio`；未配置时为 `~/.local/share/ai-film-studio` |
+
+| 安装目录内路径 | 用途 |
+| --- | --- |
+| `app/`、`venv/` | 完整 workspace 载荷和非 editable 安装的运行环境 |
+| `config/.env` | 此安装实例的私有配置，创建时权限为 0600，重装时保留 |
+| `data/studio.db`、`data/storage/` | 此安装实例的数据库和媒体，不使用源码仓库中的正式数据 |
+| `run/instance.json`、`run/studio.log` | 受管实例状态和服务日志 |
+| `install.json` | 平台、版本、所有权、固定受管路径和启动配置 |
+| `start-studio.sh`、`stop-studio.sh`、`studio-status.sh` | 启动、停止、状态查询入口 |
+
+macOS 安装目录还提供 `Start AI Film Studio.command` 和 `Stop AI Film Studio.command`。启用快捷方式时，macOS 在桌面创建 `.command`，Linux 在用户应用目录创建 `.desktop`；可用 `--shortcut-dir` 指定独立位置。自动化验证使用 `--no-shortcuts` 或临时快捷方式目录。
+
+常用操作（以下为 macOS 默认目录，Linux 换成自己的安装目录）：
+
+```bash
+STUDIO_INSTALL_ROOT="$HOME/Library/Application Support/AI Film Studio"
+"$STUDIO_INSTALL_ROOT/start-studio.sh"          # 启动成功后打开控制台
+"$STUDIO_INSTALL_ROOT/studio-status.sh"        # 查看经过归属校验的状态
+"$STUDIO_INSTALL_ROOT/stop-studio.sh"          # 停止该安装器拥有的 worker
+```
+
+默认端口为 8010，已被占用时拒绝另开实例。同一受管实例重复启动会复用现有服务；不能通过更换端口规避已有实例。源码直接 Uvicorn 启动的服务不属于安装器管理范围，安装测试前需先核对任务和实例，不能让卸载器强行停止未知服务。启动失败时查看 `run/studio.log`。
+
+卸载命令从原解压目录执行：
+
+```bash
+./uninstall.sh --dir "$STUDIO_INSTALL_ROOT"          # 保留 data/ 和 config/
+./uninstall.sh --dir "$STUDIO_INSTALL_ROOT" --purge  # 明确清理此安装目录内的数据和私有配置
+```
+
+卸载先验证并停止归属明确的实例，再删除受管运行环境；无法确认已停止时会拒绝删除。默认保留运行锁文件及数据/配置，以便重新安装或后续明确清理。安装目录中的未知文件、被用户修改的外部快捷方式不会被当作应用文件清除。`--purge` 不接收任意数据路径，只处理有效清单登记的安装目录。
+
+### 2.10 构建分平台发行包
+
+源码准备提交后，在仓库根构建三份源码引导包：
+
+```bash
+uv run --frozen --extra dev python scripts/build_releases.py --platform all --source-only
+```
+
+也可用 `--platform macos` 或 `--platform linux` 单独构建。输出在 `dist/releases/`；每包的 `release.json` 明确记录 `source-bootstrap`、平台、来源提交、依赖锁哈希和归档内容哈希。默认源码来自 Git HEAD 快照，不包含工作区中尚未提交的改动。`--source-root` 仅用于调用方明确准备的隔离源码或 CI 检出。
+
+Windows 原生 EXE 仍在 Windows 上构建：
+
+```powershell
+uv run --frozen --extra dev python scripts/build_installers.py
+uv run --frozen --extra dev python scripts/build_releases.py --platform windows --windows-exe-dir dist
+```
+
+构建器会在两份 EXE 完成自身检查后写出 `windows-installers.json`。发布器校验安装器源码、锁文件、版本、EXE 架构和哈希，以及内嵌应用载荷与当前源码的一致性；缺少或过期的来源清单会拒绝原生打包。`--source-only` 生成的 Windows 源码引导包需要本机 Python 3.11+，不能当作原生 EXE 包。
+
+本轮实际安装、启动、停止和卸载以 macOS 本机为验收环境。Windows 原生 EXE/快捷方式/注册表、Linux 原生桌面与其他架构的实际执行需要各自报告覆盖情况，不再以等待远程 Windows 机器作为本轮工作的前置条件。源码归档、PE 头或哈希检查不等同于对应系统已执行。
 
 ---
 

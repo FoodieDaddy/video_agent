@@ -52,11 +52,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         prog="uninstall.exe",
         description=f"Remove {APP_NAME} from this computer.",
     )
-    parser.add_argument("--dir", default="", help="install directory (default: %%LOCALAPPDATA%%\\AIFilmStudio)")
+    parser.add_argument(
+        "--dir", default="", help="install directory (default: %%LOCALAPPDATA%%\\AIFilmStudio)"
+    )
     parser.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     parser.add_argument("--purge", action="store_true", help="also delete user data (database, media)")
     parser.add_argument("--dry-run", action="store_true", help="print what would be removed")
-    parser.add_argument("--selftest", action="store_true", help="print diagnostics and exit (used by the build)")
+    parser.add_argument(
+        "--selftest", action="store_true", help="print diagnostics and exit (used by the build)"
+    )
     parser.add_argument("--no-pause", action="store_true", help="never wait for Enter at the end")
     return parser.parse_args(argv)
 
@@ -196,7 +200,9 @@ def main(argv: list[str] | None = None) -> int:
         if self_path.parent == root or self_path.parent == (root / "uninstall.exe").parent:
             if self_path.exists():
                 delete_self_on_reboot(self_path)
-                log("\nThis uninstaller is inside the install folder and will be deleted on the next restart.")
+                log(
+                    "\nThis uninstaller is inside the install folder and will be deleted on the next restart."
+                )
         return 0
     except InstallerError as exc:
         log(f"\nERROR: {exc}")

@@ -24,7 +24,7 @@ uv run --frozen --extra dev python scripts/checks/quality_gate.py --scope tests
 修改 Python 后可执行以下格式化命令，再重新检查：
 
 ```bash
-uv run --frozen --extra dev ruff format apps packages backend/tests scripts/checks
+uv run --frozen --extra dev ruff format apps packages backend/tests scripts installer
 ```
 
 质量门禁的实际检查范围、离线验证和真实模型验证见[测试说明](docs/testing/README.md)。自动检查默认不调用真实模型，也不需要 `.env` 密钥。模块 1～3 的真实验证是独立操作，会访问 `.env` 配置的供应商；需要真实验证时记录模式、供应商/模型、用例、结果和报告位置，报告不得包含密钥。
@@ -40,7 +40,7 @@ uv run --frozen --extra dev ruff format apps packages backend/tests scripts/chec
 
 ## 运行与资源清理
 
-项目默认只运行一个应用实例。启动前确认已有实例和端口；已有实例可用时直接复用，不能通过不断更换端口规避冲突。当前桌面入口的自动选端口行为尚不等同于全项目单实例锁。
+项目默认只运行一个应用实例。启动前确认已有实例和端口；已有实例可用时直接复用，不能通过不断更换端口规避冲突。macOS/Linux 的受管入口使用安装状态、管理锁和实例归属检查，重复启动同一实例会复用；停止只能处理经过身份核验的受管 worker。直接执行 Uvicorn 的开发入口不经过该管理协议，操作者仍需确认没有其他实例。
 
 网页测试或临时服务必须记录自己创建的进程，并在成功、失败和异常退出时清理；不得停止其他人的服务。普通质量门禁和模块检查不需要启动独立网页服务。
 
@@ -49,3 +49,11 @@ uv run --frozen --extra dev ruff format apps packages backend/tests scripts/chec
 仓库提供 GitHub Actions 工作流，同时支持 `main` 和 `master`。它只在配置了 GitHub 仓库或镜像时执行；Gitee 托管项目需要在实际 CI 平台安装锁定依赖并调用相同的质量门禁和测试命令，再由仓库管理员设置合并条件。工作流文件存在不代表远程门禁已经启用。
 
 Docker/Windows 原生交付验证、数据库迁移和生产身份接入，仍见[工程规范中的后续任务](docs/development/engineering-standards.md#后续行为与交付任务)，不能据本轮规范建设视为已完成生产验收。
+
+## 分平台发布与验证
+
+Windows、macOS、Linux 分别生成发布归档。默认发布从 Git HEAD 快照构建，只提交本任务代码后再打包；不要将尚未提交的前端修改、`.env`、数据库或个人 IDE 状态混入发布。`--source-root` 只用于已准备好的隔离源码或 CI 检出，调用方需要明确记录来源。
+
+`scripts/build_releases.py --platform all --source-only` 可在当前平台生成三份源码引导包；macOS/Linux 使用 `.command`/`.sh`，前置 Python ≥3.11 与 FFmpeg。Windows 原生 EXE 仍由 Windows 构建器生成，发布时必须提供与当前安装器源码、锁文件、内嵌载荷和架构相符的 `windows-installers.json`；缺失、过期或不匹配时拒绝打包，不能仅把任意 EXE 改名放入归档。
+
+本轮以 macOS 本机实际验证安装、启动、停止与卸载，不再等待远程 Windows SSH。平台覆盖需要具体写明：Mac 的实际执行、Linux 容器/脚本验证、Windows 原生 CI 执行各自提供证据，不能用其中一项替代另一项。测试使用独立安装目录和数据；涉及已有服务时先确认任务空闲、记录启动命令，再受控停止，测试结束清理临时实例并恢复原服务。发布格式的决定见 [ADR 0010](docs/decisions/0010-platform-specific-releases.md)。
